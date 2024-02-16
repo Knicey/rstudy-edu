@@ -1,0 +1,153 @@
+---
+title: "US Computer/Internet Use Census Supplement 2021"
+format: pdf
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Libraries/Packages
+
+```{r}
+#| label: load-pkg-data
+#| echo: false
+#| message: false
+library(knitr) 
+library(tidyverse)
+library(patchwork)
+library(dplyr)
+```
+
+```{r}
+#| label: load-data
+#| echo: false
+#| message: false
+comp_internet <- readr::read_csv('data/nov21pub.csv')
+
+```
+
+## EDA
+
+```{r}
+#| label: data-factoring
+glimpse(comp_internet)
+col_names <- names(comp_internet)
+
+comp_internet <- comp_internet |>
+  mutate(
+    across(all_of(col_names), as.factor)
+  )
+```
+
+The census imputes certain values for specific responses
+
+-1 (blank)
+
+-2 (don't know)
+
+-3 (refused)
+
+```{r}
+#| label: demographic-general-viz
+#| echo: false
+hufinal_total <- ggplot(comp_internet, aes(x = fct_infreq(HUFINAL), fill = HUFINAL)) +
+  geom_bar() +
+  labs(
+    title = "Final Result (HUFINAL) Distribution",
+    subtitle = "By the 2021 Census",
+    y = "Count",
+    x = "",
+    caption = "CAPI stands for Computer-Assisted Personal Interviewing\nCATI stands for Computer-Assisted Telephone Interviewing"
+  )
+
+hufinal_total
+
+hufinal_4 <- hufinal_total + 
+  scale_x_discrete(
+    limits = c("201", "218", "1", "226"), 
+    labels=c( "REFUSED", "FULLY COMPLETE\nCATI INTERVIEW", "CAPI COMPLETE", "VACANT REGULAR")) 
+           
+hufinal_4
+
+#Note: The documentation is states that 0 is non-interview, but no 0s were recorded
+
+ggplot(comp_internet, aes(x = fct_infreq(HUINTTYP), fill = HUINTTYP)) +
+  geom_bar() +
+  labs(
+    title = "Interview Type",
+    y = "Count",
+    x = ""
+  ) + 
+  scale_x_discrete(labels = c( "TELEPHONE", "PERSONAL", "NONINTERVIEW/INDETERMINATE" ))
+
+ggplot(comp_internet, aes(x = fct_infreq(GEREG), fill = GEREG)) +
+  geom_bar() +
+  labs(
+    title = "Distribution by Region",
+    y = "Count",
+    x = ""
+  ) + 
+  scale_x_discrete(labels = c( "South", "West", "Midwest", "Northeast" ))
+```
+
+```{r}
+#| label: supplement-question-viz
+#| echo: false
+desktop <- ggplot(comp_internet, aes(x = fct_infreq(HEDESKTP), fill = HEDESKTP)) +
+  geom_bar() +
+  labs(
+    title = "Does someone in your house use a desktop computer?",
+    y = "Count",
+    x = ""
+  ) + 
+  scale_x_discrete(labels = c( "No", "Yes", "blank"))
+
+desktop
+
+laptop <- ggplot(comp_internet, aes(x = fct_infreq(HELAPTOP), fill = HELAPTOP)) +
+  geom_bar() +
+  labs(
+    title = "Does someone in your house use a laptop?",
+    y = "Count",
+    x = ""
+  ) + 
+  scale_x_discrete(labels = c( "Yes", "No", "blank"))
+
+laptop
+
+internet <- ggplot(comp_internet, aes(x = fct_infreq(HEINHOME), fill = HEINHOME)) +
+  geom_bar() +
+  labs(
+    title = "Does someone in your house use the internet?",
+    y = "Count",
+    x = ""
+  ) + 
+  scale_x_discrete(labels = c( "Yes", "blank", "No"))
+
+internet
+
+data_plan <- ggplot(comp_internet, aes(x = fct_infreq(HEMOBDAT), fill = HEMOBDAT)) +
+  geom_bar() +
+  labs(
+    title = "Does someone in your house use a data plan?",
+    y = "Count",
+    x = ""
+  ) + 
+  scale_x_discrete(labels = c( "Yes", "blank", "No"))
+
+data_plan
+
+internet+data_plan
+
+
+ed_train <- ggplot(comp_internet, aes(x = PEEDTRAI, fill = PEEDTRAI)) +
+  geom_bar() +
+  labs(
+    title = "Does someone in your house use the internet for online classes or job training?",
+    y = "Count",
+    x = ""
+  ) + 
+  scale_x_discrete(limits = c("1", "2"), labels = c( "Yes", "No"))
+
+ed_train
+```
