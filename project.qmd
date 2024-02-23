@@ -34,6 +34,8 @@ test_state_ys <- readr::read_csv('data/seda2023_state_poolsub_ys_updated_2024020
 
 This is a dataset corresponding to the November 2021 Census. This dataset in particular, has an additional supplement asking questions about Computer and Internet Use.
 
+Documentation and dataset can be found here: <https://www.census.gov/data/datasets/time-series/demo/cps/cps-supp_cps-repwgt/cps-computer.html>
+
 ```{r}
 #| label: data-factoring
 #| echo: false
@@ -176,6 +178,8 @@ The report can be found here: <https://educationrecoveryscorecard.org/wp-content
 
 The datasets can be found here: <https://edopportunity.org/get-the-data/seda-archive-downloads/>
 
+Documentation can be found here: <https://edopportunity.org/docs/seda2023_documentation_20240130.pdf>
+
 Year Standardized (YS)
 
 > To create the YS scale, we standardize the estimates to the 2019 national average in each grade and subject. In this scale, each unit is equivalent to a 2019 national standard deviation in the same subject and grade
@@ -190,6 +194,7 @@ This dataset, test_admindist_gys has 72 columns and 40,897 observations, each ob
 #| echo: false
 #| message: false
 library(sf)
+library(usmap)
 ggplot(test_admindist_ys |> filter(subject == "mth"), aes(x = ys_mn_2023_ol
 ) ) +
   geom_density() +
@@ -204,12 +209,57 @@ ggplot(test_admindist_ys |> filter(subject == "rla"), aes(x = ys_mn_2023_ol
     title = "Reading Estimated Test Score Across-State"
   )
 
+test_state_ys_all_math <- filter(test_state_ys, subgroup == "all", subject == "mth")
 
-ggplot(test_state_ys |> filter(subject == "rla"), aes(x = ys_mn_2023_ol
+test_admindist_ys_all_math_nc <- filter(test_admindist_ys, subgroup == "all", subject == "mth", stateabb == "NC")
+
+ggplot(test_state_ys_all_math, aes(x = ys_mn_2022_ol
 ) ) +
   geom_density() +
   labs(
     title = "Reading Estimated Test Score Across-State"
   )
+
+#demo(test_admindist_ys_all_math_nc, ask = FALSE, echo = FALSE)
+#plot(st_geometry(nc))
+
+#plot(test_admindist_ys_all_math_nc)
+
+plot_usmap(data = test_state_ys_all_math, 
+           values = "ys_mn_2022_ol"
+           )
+
+comp_internet_renamed <- comp_internet |> 
+  rename(
+    fips_state = GESTFIPS,
+    fips_district = GTCO,
+    ) 
+
+comp_internet_renamed <- comp_internet_renamed |>
+  mutate(
+    state_name = fips_info(fips_state)$full
+  )
+
+comp_internet_renamed$state_name
+HEDESKTOP_state$value
+
+HEDESKTOP_state <- comp_internet_renamed |>
+  group_by(state_name) |>
+  summarise_at(vars(HEDESKTP), list(name = mean)) |>
+  rename(
+    avg = name,
+    state = state_name
+  )
+
+
+plot_usmap(data = HEDESKTOP_state, 
+           values = "avg"
+           )
+  
+
+#max(comp_internet_renamed$fips_district)
+
+#fips_info(1)$full
+
 
 ```
