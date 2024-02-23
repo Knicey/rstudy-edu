@@ -23,14 +23,22 @@ library(dplyr)
 #| echo: false
 #| message: false
 comp_internet <- readr::read_csv('data/nov21pub.csv')
-
+test_scores_cov <- readr::read_csv('data/seda2023_cov_state_annual.csv')
+test_admindist_gys <- readr::read_csv('data/seda2023_admindist_poolsub_gys_updated_20240205.csv')
+test_admindist_ys <- readr::read_csv('data/seda2023_admindist_poolsub_ys_updated_20240205.csv')
+test_state_gys <- readr::read_csv('data/seda2023_state_poolsub_gys_updated_20240205.csv')
+test_state_ys <- readr::read_csv('data/seda2023_state_poolsub_ys_updated_20240205.csv')
 ```
 
-## EDA
+## EDA - Comp/Internet
+
+This is a dataset corresponding to the November 2021 Census. This dataset in particular, has an additional supplement asking questions about Computer and Internet Use.
 
 ```{r}
 #| label: data-factoring
-glimpse(comp_internet)
+#| echo: false
+#| message: false
+#glimpse(comp_internet)
 col_names <- names(comp_internet)
 
 comp_internet <- comp_internet |>
@@ -47,9 +55,12 @@ The census imputes certain values for specific responses
 
 -3 (refused)
 
+This dataset has 568 columns and 127,375 observations, each one representing a different interview.
+
 ```{r}
 #| label: demographic-general-viz
 #| echo: false
+#| message: false
 hufinal_total <- ggplot(comp_internet, aes(x = fct_infreq(HUFINAL), fill = HUFINAL)) +
   geom_bar() +
   labs(
@@ -66,6 +77,8 @@ hufinal_4 <- hufinal_total +
   scale_x_discrete(
     limits = c("201", "218", "1", "226"), 
     labels=c( "REFUSED", "FULLY COMPLETE\nCATI INTERVIEW", "CAPI COMPLETE", "VACANT REGULAR")) 
+
+#Separate dataframe for distribution counts
            
 hufinal_4
 
@@ -101,6 +114,7 @@ desktop <- ggplot(comp_internet, aes(x = fct_infreq(HEDESKTP), fill = HEDESKTP))
     x = ""
   ) + 
   scale_x_discrete(labels = c( "No", "Yes", "blank"))
+#"-1" = "No", etc.
 
 desktop
 
@@ -150,4 +164,52 @@ ed_train <- ggplot(comp_internet, aes(x = PEEDTRAI, fill = PEEDTRAI)) +
   scale_x_discrete(limits = c("1", "2"), labels = c( "Yes", "No"))
 
 ed_train
+
+#PRNMCHLD number of children might be correlated
+```
+
+## EDA - Test Scores
+
+These are the test scores compiled by the Education Recovery Scorecard as part of The Educational Opportunity Project at Stanford University. They use the results of state-administered exams and adjust them to be comparable across subjects, grades, and or years.
+
+The report can be found here: <https://educationrecoveryscorecard.org/wp-content/uploads/2024/01/ERS-Report-Final-1.31.pdf>
+
+The datasets can be found here: <https://edopportunity.org/get-the-data/seda-archive-downloads/>
+
+Year Standardized (YS)
+
+> To create the YS scale, we standardize the estimates to the 2019 national average in each grade and subject. In this scale, each unit is equivalent to a 2019 national standard deviation in the same subject and grade
+
+Grade Year Standardized (GYS)
+
+> To create the GYS scale, we first approximate the average amount student test scores grow in a grade on NAEP using the 4th and 8th grade estimates by subject in 2019. We calculate the amount the tests cores changed between 4th and 8th grade as the average score in 8th grade in 2019 minus the average score in 4th grade in 2019. Then, to get an estimate of per-grade differences, we divide that value by 4. We scale the data using these parameters, such that in the GYS scale each unit is interpretable as 1 grade level referenced to the 2019 national population.
+
+This dataset, test_admindist_gys has 72 columns and 40,897 observations, each observation representing
+
+```{r}
+#| echo: false
+#| message: false
+library(sf)
+ggplot(test_admindist_ys |> filter(subject == "mth"), aes(x = ys_mn_2023_ol
+) ) +
+  geom_density() +
+  labs(
+    title = "Math Estimated Test Score Across-State"
+  )
+
+ggplot(test_admindist_ys |> filter(subject == "rla"), aes(x = ys_mn_2023_ol
+) ) +
+  geom_density() +
+  labs(
+    title = "Reading Estimated Test Score Across-State"
+  )
+
+
+ggplot(test_state_ys |> filter(subject == "rla"), aes(x = ys_mn_2023_ol
+) ) +
+  geom_density() +
+  labs(
+    title = "Reading Estimated Test Score Across-State"
+  )
+
 ```
