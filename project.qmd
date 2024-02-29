@@ -12,10 +12,12 @@ editor_options:
 #| label: load-pkg-data
 #| echo: false
 #| message: false
+#| warning: false
 library(knitr) 
 library(tidyverse)
 library(patchwork)
 library(dplyr)
+library(stringr)
 ```
 
 ```{r}
@@ -42,7 +44,54 @@ Documentation and dataset can be found here: <https://www.census.gov/data/datase
 #| message: false
 #glimpse(comp_internet)
 col_names <- names(comp_internet)
+col_names <- col_names[ !col_names == "GESTFIPS"]
 
+
+#Pivot table probably not that useful since it anonymizes the questions from each other
+comp_status <- comp_internet |>
+  group_by( HUFINAL ) |>
+  summarise( count = n() )
+
+complete_codes = c(1, 2, 4, 201, 203)
+
+comp_mapping <- comp_internet |>
+  select(
+     "county_fips" = "GTCO", 
+     "Status" = "HUFINAL",
+     "state_fips" = "GESTFIPS", 
+     "CBSAcode" = "GTCBSA",
+     "UseDesktop" = "HEDESKTP", 
+     "UseLaptop" = "HELAPTOP",  
+     "UseTablet" = "HETABLET",
+     "UseSmartphone" = "HEMPHONE",
+     "UseWearable" = "HEWEARAB",
+     "UseInternet" = "HEINHOME",
+     "UseInternetSchool" = "HEINSCHL", 
+     "UseDataplan" = "HEMOBDAT",
+     "UseInternetTrainEdu" = "PEEDTRAI"
+      ) |>
+  filter(
+    any(Status == complete_codes)
+  ) |>
+  mutate(
+    state = fips_info(state_fips)$full,
+    #across(everything(), as.factor)
+  ) |>
+  group_by(state, UseDesktop) |>
+  count() |>
+  filter(UseDesktop == 1 | UseDesktop == 2) |>
+  pivot_wider(
+    names_from = UseDesktop,
+    values_from = n
+  ) |>
+  rename( UseDesktop1 = "1", UseDesktop2 = "2" ) |>
+  mutate(porportion = UseDesktop1/(UseDesktop1 + UseDesktop2))
+
+
+```
+
+```{r}
+#| label: comp_int_factor
 comp_internet <- comp_internet |>
   mutate(
     across(all_of(col_names), as.factor)
@@ -193,8 +242,7 @@ This dataset, test_admindist_gys has 72 columns and 40,897 observations, each ob
 ```{r}
 #| echo: false
 #| message: false
-library(sf)
-library(usmap)
+
 ggplot(test_admindist_ys |> filter(subject == "mth"), aes(x = ys_mn_2023_ol
 ) ) +
   geom_density() +
@@ -220,11 +268,6 @@ ggplot(test_state_ys_all_math, aes(x = ys_mn_2022_ol
     title = "Reading Estimated Test Score Across-State"
   )
 
-#demo(test_admindist_ys_all_math_nc, ask = FALSE, echo = FALSE)
-#plot(st_geometry(nc))
-
-#plot(test_admindist_ys_all_math_nc)
-
 plot_usmap(data = test_state_ys_all_math, 
            values = "ys_mn_2022_ol"
            )
@@ -235,13 +278,18 @@ comp_internet_renamed <- comp_internet |>
     fips_district = GTCO,
     ) 
 
+comp_internet_renamed$fips_state
+
 comp_internet_renamed <- comp_internet_renamed |>
   mutate(
     state_name = fips_info(fips_state)$full
   )
 
 comp_internet_renamed$state_name
-HEDESKTOP_state$value
+
+fips_info(3)$full
+
+comp_internet_renamed$state_name
 
 HEDESKTOP_state <- comp_internet_renamed |>
   group_by(state_name) |>
@@ -250,16 +298,42 @@ HEDESKTOP_state <- comp_internet_renamed |>
     avg = name,
     state = state_name
   )
+```
+
+```{r}
+#| label: usmap
+
+library(usmap)
+plot_usmap(data = comp_mapping, 
+           values = "porportion"
+           ) +
+  scale_color_viridis_b() +
+  labs(title = "State Map")
 
 
-plot_usmap(data = HEDESKTOP_state, 
-           values = "avg"
-           )
-  
 
-#max(comp_internet_renamed$fips_district)
+#Investigate different map packages
+#Plotting two variables on one map is difficult
+#Consider mapping two colors for reading and math scores
+#geom_maps (maps package)
+#Dot Size + color
+#Shape + color 
+#Think about the story I want to tell
+#Mapping differences between math & reading scores
+#Think about direction of project: modeling/visualizing,deliverables, etc.
 
-#fips_info(1)$full
+#Use case_when or case_match to remap the values
+library(maps)
+#Read the books on mapping + spatial viz
+us_map <- map_data("state") |>
+  rename("state" = "region") |>
+  mutate("state" = str_to_title(state))
 
 
+us_map <- merge(comp_mapping, us_map, by = c("state"))
+
+us_map |>
+  ggplot(aes(x = long, y = lat, group = group, fill = porportion)) +
+  geom_polygon(fill = "lightblue", color = "black") +
+  theme_void()
 ```
