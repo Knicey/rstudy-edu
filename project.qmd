@@ -18,6 +18,9 @@ library(tidyverse)
 library(patchwork)
 library(dplyr)
 library(stringr)
+library(usmap)
+library(maps)
+
 ```
 
 ```{r}
@@ -50,43 +53,8 @@ col_names <- col_names[ !col_names == "GESTFIPS"]
 #Pivot table probably not that useful since it anonymizes the questions from each other
 comp_status <- comp_internet |>
   group_by( HUFINAL ) |>
-  summarise( count = n() )
-
-complete_codes = c(1, 2, 4, 201, 203)
-
-comp_mapping <- comp_internet |>
-  select(
-     "county_fips" = "GTCO", 
-     "Status" = "HUFINAL",
-     "state_fips" = "GESTFIPS", 
-     "CBSAcode" = "GTCBSA",
-     "UseDesktop" = "HEDESKTP", 
-     "UseLaptop" = "HELAPTOP",  
-     "UseTablet" = "HETABLET",
-     "UseSmartphone" = "HEMPHONE",
-     "UseWearable" = "HEWEARAB",
-     "UseInternet" = "HEINHOME",
-     "UseInternetSchool" = "HEINSCHL", 
-     "UseDataplan" = "HEMOBDAT",
-     "UseInternetTrainEdu" = "PEEDTRAI"
-      ) |>
-  filter(
-    any(Status == complete_codes)
-  ) |>
-  mutate(
-    state = fips_info(state_fips)$full,
-    #across(everything(), as.factor)
-  ) |>
-  group_by(state, UseDesktop) |>
-  count() |>
-  filter(UseDesktop == 1 | UseDesktop == 2) |>
-  pivot_wider(
-    names_from = UseDesktop,
-    values_from = n
-  ) |>
-  rename( UseDesktop1 = "1", UseDesktop2 = "2" ) |>
-  mutate(porportion = UseDesktop1/(UseDesktop1 + UseDesktop2))
-
+  summarise( count = n() ) |>
+  ungroup()
 
 ```
 
@@ -237,6 +205,12 @@ Grade Year Standardized (GYS)
 
 > To create the GYS scale, we first approximate the average amount student test scores grow in a grade on NAEP using the 4th and 8th grade estimates by subject in 2019. We calculate the amount the tests cores changed between 4th and 8th grade as the average score in 8th grade in 2019 minus the average score in 4th grade in 2019. Then, to get an estimate of per-grade differences, we divide that value by 4. We scale the data using these parameters, such that in the GYS scale each unit is interpretable as 1 grade level referenced to the 2019 national population.
 
+Other important acronyms
+
+`EB`: Empirical Bayes
+
+`OLS`: Ordinary Least Squares
+
 This dataset, test_admindist_gys has 72 columns and 40,897 observations, each observation representing
 
 ```{r}
@@ -298,19 +272,151 @@ HEDESKTOP_state <- comp_internet_renamed |>
     avg = name,
     state = state_name
   )
+fips_info(1005)
+```
+
+### Mapping Data Prepping/Cleaning
+
+```{r}
+#Function to combine the state and county fips codes
+combineFips <- function(state_fips, county_fips) {
+  state_fips <- as.numeric(state_fips)
+  county_fips <- as.numeric(county_fips)
+  
+  state_fips_str <- sprintf("%02d", state_fips)
+  county_fips_str <- sprintf("%03d", county_fips)
+  
+  full_fips_code <- paste0(state_fips_str, county_fips_str)
+  #print(full_fips_code)
+  
+  return(full_fips_code)
+}
+```
+
+Fipscodes dataset can be found here:
+
+<https://www.census.gov/geographies/reference-files/2021/demo/popest/2021-fips.html>
+
+```{r}
+
+fipscodes <- readr::read_csv('data/all-geocodes-v2021.csv', skip = 4)
+
+fipscodes_clean <- fipscodes |>
+  rename(
+    county_fips = 'County Code (FIPS)',
+    state_fips = 'State Code (FIPS)',
+    area_name = 'Area Name (including legal/statistical area description)'
+  ) |>
+  filter(
+    county_fips != "000",
+    state_fips != "00"
+  ) |>
+  mutate(
+    state_fips = as.numeric(state_fips),
+    county_fips = as.numeric(county_fips)
+  ) |>
+  select(state_fips, county_fips, area_name)
+
+complete_codes = c(1, 2, 4, 201, 203)
+
+#Fips codes can change over time ...
+#So even if R packages are up to date, the data may not be
+
+comp_mapping <- comp_internet |>
+  select(
+     "county_fips" = "GTCO", 
+     "Status" = "HUFINAL",
+     "state_fips" = "GESTFIPS", 
+     "CBSAcode" = "GTCBSA",
+     "UseDesktop" = "HEDESKTP", 
+     "UseLaptop" = "HELAPTOP",  
+     "UseTablet" = "HETABLET",
+     "UseSmartphone" = "HEMPHONE",
+     "UseWearable" = "HEWEARAB",
+     "UseInternet" = "HEINHOME",
+     "UseInternetSchool" = "HEINSCHL", 
+     "UseDataplan" = "HEMOBDAT",
+     "UseInternetTrainEdu" = "PEEDTRAI"
+      ) |>
+  drop_na(state_fips, county_fips) |>
+  filter(
+    any(Status == complete_codes),
+    county_fips != "0",
+  ) |>
+  mutate(
+    fips = combineFips(state_fips, county_fips),
+    state = fips_info(state_fips)$full
+  ) |>
+  group_by(state_fips, county_fips, fips, state, UseDesktop) |>
+  count() |>
+  filter(UseDesktop == 1 | UseDesktop == 2) |>
+  pivot_wider(
+    names_from = UseDesktop,
+    values_from = n
+  ) |>
+  rename( Yes = "1", No = "2" ) |>
+  mutate(porportion = Yes/(Yes + No))
+
+comp_internet |>
+  group_by(GTCO) |>
+  summarise( count = n())
+
+comp_internet |>
+  filter(GTCO != 0) |>
+  summarise( count = n())
 ```
 
 ```{r}
-#| label: usmap
+#| label: mapping-internet-use-maps-package
+#Read the books on mapping + spatial viz
+us_map <- map_data("county") |>
+  rename("state" = "region") |>
+  mutate(
+    "state" = str_to_title(state),
+    "subregion" = str_to_title(subregion)
+    )
 
-library(usmap)
-plot_usmap(data = comp_mapping, 
-           values = "porportion"
-           ) +
-  scale_color_viridis_b() +
-  labs(title = "State Map")
+fipsCoded <- merge(comp_mapping, fipscodes_clean, by = c("state_fips", "county_fips")) |>
+  mutate(
+    subregion = word(area_name, start = 1, end = 1)
+  ) |>
+  rename(
+    "county" = "area_name"
+  ) |>
+  mutate(
+    "fips" = combineFips(state_fips, county_fips)
+  )
+
+county_map <- merge(fipsCoded, us_map, by = c("state", "subregion"))
+
+us_map <- merge(comp_mapping, us_map, by = c("state"))
+
+us_map |>
+#county_map |>
+  ggplot(aes(x = long, y = lat, group = group, fill = porportion)) +
+  geom_polygon(fill = "lightblue", color = "black") +
+  theme_void()
+```
+
+```{r}
+#| label: mapping-internet-use-usmaps-package
+
+fips_trimmed <- fipsCoded |>
+  select(fips, state, county, porportion)
+
+#Map for porportion of people 
+plot_usmap(data = fips_trimmed, 
+           values = "porportion",
+           regions = "counties") +
+  scale_fill_continuous(low = "white", high = "red", name = "Porportion of those who report using Internet") + 
+  labs(title = "County Map")
 
 
+plot_usmap(data = comp_mapping, values = "porportion", regions = "state") +
+  scale_fill_continuous(low = "white", high = "red", name = "Porportion of those who report using Internet") + 
+  labs(title = "District Map")
+
+plot_usmap(regions = "counties")
 
 #Investigate different map packages
 #Plotting two variables on one map is difficult
@@ -322,18 +428,26 @@ plot_usmap(data = comp_mapping,
 #Mapping differences between math & reading scores
 #Think about direction of project: modeling/visualizing,deliverables, etc.
 
-#Use case_when or case_match to remap the values
-library(maps)
-#Read the books on mapping + spatial viz
-us_map <- map_data("state") |>
-  rename("state" = "region") |>
-  mutate("state" = str_to_title(state))
+
+```
+
+```{r}
+#| label: mapping-test-scores
+
+state_grouped_all <- test_state_ys |>
+  filter(subgroup == "all") |>
+  group_by(sedafipsname, subject) |>
+  summarise( mean_ol = mean(ys_mn_2022_ol), mean_eb = mean(ys_mn_2022_eb
+)) |>
+  rename (
+    state = sedafipsname
+  )
 
 
-us_map <- merge(comp_mapping, us_map, by = c("state"))
+plot_usmap(data = state_grouped_all, values = "mean_ol", regions = "state") +
+  scale_fill_continuous(low = "red", high = "white", name = "Test Score Difference from 2019 in standard deviations") + 
+  labs(title = "State Map")
+```
 
-us_map |>
-  ggplot(aes(x = long, y = lat, group = group, fill = porportion)) +
-  geom_polygon(fill = "lightblue", color = "black") +
-  theme_void()
+```         
 ```
