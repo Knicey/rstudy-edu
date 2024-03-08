@@ -274,7 +274,7 @@ HEDESKTOP_state <- comp_internet_renamed |>
   )
 ```
 
-### Mapping Data Prepping/Cleaning
+## Mapping Data Prepping/Cleaning
 
 ```{r}
 #| label: combine-fips-function
@@ -486,11 +486,6 @@ census_clean <- comp_internet |>
      "UseInternetTrainEdu" = "PEEDTRAI"
       )
 
-cbsa_codes <- census_clean |>
-  group_by(CBSAcode) |>
-  count()
-  arrange(-n)
-
 valid_county <- census_clean |>
   filter(
     county_fips != 0
@@ -615,5 +610,45 @@ ggplot(internet_map, aes(x = long, y = lat)) +
     )
 ```
 
-```         
+```{r}
+#| label: examining-county-and-cbsa-codes
+
+#Show distribution of country codes
+comp_internet |>
+  group_by(GTCO) |>
+  summarise( count = n())
+
+#Show how manny nonzero country codes there were
+comp_internet |>
+  filter(GTCO != 0) |>
+  summarise( count = n())
+
+#Distribution of CBSA codes
+comp_internet |>
+  group_by(GTCBSA) |>
+  count()
+  arrange(-n)
+  
+#Show how many nonzero CBSA codes
+comp_internet |>
+  filter(GTCBSA != 0) |>
+  count()
 ```
+
+Potential datasets to look into
+
+Household income in the past year
+
+<https://data.census.gov/table/ACSST1Y2021.S2503?t=Financial%20Characteristics&g=010XX00US$0500000&y=2021&tp=true>
+
+Age + Race Demographics
+
+<https://data.census.gov/table/ACSDP1Y2021.DP05?g=010XX00US$0500000&y=2021&tp=true>
+
+Characteristics of Foreign Born Population
+
+<https://data.census.gov/table/ACSST1Y2021.S0501?g=010XX00US$0500000&y=2021&tp=true>
+
+Mapping districts to counties (NCES dataset?)
+
+<https://nces.ed.gov/ccd/districtsearch/district_detail.asp?Search=1&details=1&InstName=Chapel+Hill-Carrboro+City+Schools&DistrictType=1&DistrictType=2&DistrictType=3&DistrictType=4&DistrictType=5&DistrictType=6&DistrictType=7&DistrictType=8&DistrictType=9&NumOfStudentsRange=more&NumOfSchoolsRange=more&ID2=3700720>
