@@ -49,7 +49,6 @@ Documentation and dataset can be found here: <https://www.census.gov/data/datase
 col_names <- names(comp_internet)
 col_names <- col_names[ !col_names == "GESTFIPS"]
 
-
 #Pivot table probably not that useful since it anonymizes the questions from each other
 comp_status <- comp_internet |>
   group_by( HUFINAL ) |>
@@ -60,6 +59,7 @@ comp_status <- comp_internet |>
 
 ```{r}
 #| label: comp_int_factor
+#Making all variables factors
 comp_internet <- comp_internet |>
   mutate(
     across(all_of(col_names), as.factor)
@@ -272,12 +272,12 @@ HEDESKTOP_state <- comp_internet_renamed |>
     avg = name,
     state = state_name
   )
-fips_info(1005)
 ```
 
 ### Mapping Data Prepping/Cleaning
 
 ```{r}
+#| label: combine-fips-function
 #Function to combine the state and county fips codes
 combineFips <- function(state_fips, county_fips) {
   state_fips <- as.numeric(state_fips)
@@ -298,10 +298,10 @@ Fipscodes dataset can be found here:
 <https://www.census.gov/geographies/reference-files/2021/demo/popest/2021-fips.html>
 
 ```{r}
+#| label: county-mapping-data-prep
+gov_fipscodes <- readr::read_csv('data/all-geocodes-v2021.csv', skip = 4)
 
-fipscodes <- readr::read_csv('data/all-geocodes-v2021.csv', skip = 4)
-
-fipscodes_clean <- fipscodes |>
+gov_fipscodes_clean <- gov_fipscodes |>
   rename(
     county_fips = 'County Code (FIPS)',
     state_fips = 'State Code (FIPS)',
@@ -357,10 +357,14 @@ comp_mapping <- comp_internet |>
   rename( Yes = "1", No = "2" ) |>
   mutate(porportion = Yes/(Yes + No))
 
+fips_info(01041)
+
+#Show distribution of country code
 comp_internet |>
   group_by(GTCO) |>
   summarise( count = n())
 
+#Show how manny nonzero country codes there were
 comp_internet |>
   filter(GTCO != 0) |>
   summarise( count = n())
@@ -369,14 +373,14 @@ comp_internet |>
 ```{r}
 #| label: mapping-internet-use-maps-package
 #Read the books on mapping + spatial viz
-us_map <- map_data("county") |>
+county_map <- map_data("county") |>
   rename("state" = "region") |>
   mutate(
     "state" = str_to_title(state),
     "subregion" = str_to_title(subregion)
     )
 
-fipsCoded <- merge(comp_mapping, fipscodes_clean, by = c("state_fips", "county_fips")) |>
+fipsCoded <- merge(comp_mapping, gov_fipscodes_clean, by = c("state_fips", "county_fips")) |>
   mutate(
     subregion = word(area_name, start = 1, end = 1)
   ) |>
@@ -387,14 +391,16 @@ fipsCoded <- merge(comp_mapping, fipscodes_clean, by = c("state_fips", "county_f
     "fips" = combineFips(state_fips, county_fips)
   )
 
-county_map <- merge(fipsCoded, us_map, by = c("state", "subregion"))
+#Unfortunately mapping by county isn't particularly useful due to lack of data
+internet_map <- fipsCoded |>
+  left_join(county_map, by = join_by(subregion == subregion))
 
 us_map <- merge(comp_mapping, us_map, by = c("state"))
 
-us_map |>
-#county_map |>
+#us_map |>
+internet_map |>
   ggplot(aes(x = long, y = lat, group = group, fill = porportion)) +
-  geom_polygon(fill = "lightblue", color = "black") +
+  geom_polygon(color = "black") +
   theme_void()
 ```
 
@@ -416,7 +422,9 @@ plot_usmap(data = comp_mapping, values = "porportion", regions = "state") +
   scale_fill_continuous(low = "white", high = "red", name = "Porportion of those who report using Internet") + 
   labs(title = "District Map")
 
-plot_usmap(regions = "counties")
+fips_info()
+
+#plot_usmap(regions = "counties")
 
 #Investigate different map packages
 #Plotting two variables on one map is difficult
@@ -428,6 +436,15 @@ plot_usmap(regions = "counties")
 #Mapping differences between math & reading scores
 #Think about direction of project: modeling/visualizing,deliverables, etc.
 
+#If I am dividing my data, note if there are differences in distributions/analysis
+#Potential mapping of district to county?
+#Stuff like the "FIPS" issues may be included in a process section, make sure to keep notes for doucmentation
+#Comparing diferent subjects, use the same scale so it's eaiser to compare standard deivations
+#Standard deviations are good for relative comparisons and can't be generalized to absolute values
+#See if there's another location identifier I could use
+#Look into another long scale survey/question internet/education online/enrichment
+#Investigate the large number of not specified county codes, possibbly information not provided. See if people completed online/not specified FIPs have other geogrpahic data.
+#Start bivariate 
 
 ```
 
@@ -444,9 +461,153 @@ state_grouped_all <- test_state_ys |>
   )
 
 
-plot_usmap(data = state_grouped_all, values = "mean_ol", regions = "state") +
+plot_usmap(data = state_grouped_all |> filter(subject == "mth"), values = "mean_ol", regions = "state") +
   scale_fill_continuous(low = "red", high = "white", name = "Test Score Difference from 2019 in standard deviations") + 
   labs(title = "State Map")
+```
+
+```{r}
+#| label: looking-into-missing-county-data
+
+census_clean <- comp_internet |>
+  select(
+     "county_fips" = "GTCO", 
+     "state_fips" = "GESTFIPS", 
+     "Status" = "HUFINAL",
+     "CBSAcode" = "GTCBSA",
+     "UseDesktop" = "HEDESKTP", 
+     "UseLaptop" = "HELAPTOP",  
+     "UseTablet" = "HETABLET",
+     "UseSmartphone" = "HEMPHONE",
+     "UseWearable" = "HEWEARAB",
+     "UseInternet" = "HEINHOME",
+     "UseInternetSchool" = "HEINSCHL", 
+     "UseDataplan" = "HEMOBDAT",
+     "UseInternetTrainEdu" = "PEEDTRAI"
+      )
+
+valid_county <- census_clean |>
+  filter(
+    county_fips != 0
+  ) |>
+  mutate(
+    state = fips_info(state_fips)$full,
+  ) |>
+  group_by(state, Status) |>
+  count() 
+
+valid_county_sum <- valid_county |>
+  group_by(Status) |>
+  summarise(n = sum(n)) |>
+  arrange(-n)
+
+invalid_county <- census_clean |>
+  filter(
+    county_fips == 0
+  ) |>
+  mutate(
+    state = fips_info(state_fips)$full,
+  ) |>
+  group_by(state, Status) |>
+  count()
+
+invalid_county_sum <- invalid_county |>
+  group_by(Status) |>
+  summarise(n = sum(n)) |>
+  arrange(-n)
+
+valid_county_status_plot <- ggplot(valid_county_sum |> slice(1:10)) +
+  geom_col(aes(x = reorder(Status, -n), y = n) ) +
+  #geom_col(data = invalid_county_sum) +
+  labs(
+    title = "Distribution of Codes",
+    subtitle = "Among Responses with Valid counties"
+  ) +
+  scale_y_continuous( limits = c(0, 60000) )
+
+invalid_county_status_plot <- ggplot(invalid_county_sum |> slice(1:10)) +
+  geom_col(aes(x = reorder(Status, -n), y = n)) +
+  labs(
+    title = "Distribution of codes",
+    subtitle = "Among Responses with Invalid counties"
+  ) +
+  scale_y_continuous( limits = c(0, 60000) )
+
+valid_county_status_plot + invalid_county_status_plot
+```
+
+Code Mappings for "Status"
+
+1: Fully Complete CATI (computer-assisted telephone interviewing)
+
+2: Partially Complete CATI
+
+201: CAPI (computer-assisted personal interviewing)
+
+There appears to be no correlation between the interview completion
+
+```{r}
+#| label: bivariate-mapping
+
+#Mapping by state since county data is very incomplete
+comp_state_mapping <- comp_internet |>
+  select(
+     "county_fips" = "GTCO", 
+     "Status" = "HUFINAL",
+     "state_fips" = "GESTFIPS", 
+     "CBSAcode" = "GTCBSA",
+     "UseDesktop" = "HEDESKTP", 
+     "UseLaptop" = "HELAPTOP",  
+     "UseTablet" = "HETABLET",
+     "UseSmartphone" = "HEMPHONE",
+     "UseWearable" = "HEWEARAB",
+     "UseInternet" = "HEINHOME",
+     "UseInternetSchool" = "HEINSCHL", 
+     "UseDataplan" = "HEMOBDAT",
+     "UseInternetTrainEdu" = "PEEDTRAI"
+      ) |>
+  drop_na(state_fips, county_fips) |>
+  filter(
+    any(Status == complete_codes)
+  ) |>
+  mutate(
+    state = fips_info(state_fips)$full
+  ) |>
+  group_by(state, UseDesktop) |>
+  count() |>
+  filter(UseDesktop == 1 | UseDesktop == 2) |>
+  pivot_wider(
+    names_from = UseDesktop,
+    values_from = n
+  ) |>
+  rename( Yes = "1", No = "2" ) |>
+  mutate(porportion = Yes/(Yes + No))
+
+state_map <- map_data("state") |>
+  mutate(
+  "region" = str_to_title(region),
+  ) 
+
+internet_map <- comp_state_mapping |>
+  left_join(state_map, by = join_by(state == region))
+
+
+state_centroids <- state_map|>
+  group_by(region) |>
+  summarise( long = mean (long), lat = mean(lat))
+
+score_map <- state_grouped_all |>
+  left_join(state_centroids, by = join_by(state == region))
+
+
+ggplot(internet_map, aes(x = long, y = lat)) +
+    geom_polygon(aes(group = group, fill = porportion), color = "black") +
+    geom_point(data = score_map, size = 4, aes(color = mean_ol)) +
+    scale_color_viridis_c(option = "A") +
+    theme_void() +
+    labs(
+      fill = "Porportion of Reported\nInternet Usage"
+    )
 ```
 
 ```         
