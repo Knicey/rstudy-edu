@@ -486,6 +486,11 @@ census_clean <- comp_internet |>
      "UseInternetTrainEdu" = "PEEDTRAI"
       )
 
+cbsa_codes <- census_clean |>
+  group_by(CBSAcode) |>
+  count()
+  arrange(-n)
+
 valid_county <- census_clean |>
   filter(
     county_fips != 0
