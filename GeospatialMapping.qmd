@@ -29,6 +29,9 @@ library(readxl)
 #| message: false
 
 # 2021 Census Supplement about Internet and Computer Usage
+# This file is not included in the repository due to file size constraints
+# You can download the file here: https://www.census.gov/data/datasets/time-series/demo/cps/cps-supp_cps-repwgt/cps-computer.html
+
 comp_internet <- readr::read_csv('data/nov21pub.csv')
 
 # Academic performance across school districts collected by The Educational Opportunity Project at Stanford
