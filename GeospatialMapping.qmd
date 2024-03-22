@@ -1,0 +1,412 @@
+---
+title: "Geospatial Mapping"
+format: pdf
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Libraries/Packages
+
+```{r}
+#| label: load-pkg-data
+#| echo: false
+#| message: false
+#| warning: false
+library(knitr) 
+library(tidyverse)
+library(patchwork)
+library(dplyr)
+library(stringr)
+library(usmap)
+library(maps)
+
+```
+
+```{r}
+#| label: load-data
+#| echo: false
+#| message: false
+comp_internet <- readr::read_csv('data/nov21pub.csv')
+test_scores_cov <- readr::read_csv('data/seda2023_cov_state_annual.csv')
+test_admindist_gys <- readr::read_csv('data/seda2023_admindist_poolsub_gys_updated_20240205.csv')
+test_admindist_ys <- readr::read_csv('data/seda2023_admindist_poolsub_ys_updated_20240205.csv')
+test_state_gys <- readr::read_csv('data/seda2023_state_poolsub_gys_updated_20240205.csv')
+test_state_ys <- readr::read_csv('data/seda2023_state_poolsub_ys_updated_20240205.csv')
+```
+
+```{r}
+#| label: combine-fips-function
+#Function to combine the state and county fips codes
+combineFips <- function(state_fips, county_fips) {
+  state_fips <- as.numeric(state_fips)
+  county_fips <- as.numeric(county_fips)
+  
+  state_fips_str <- sprintf("%02d", state_fips)
+  county_fips_str <- sprintf("%03d", county_fips)
+  
+  full_fips_code <- paste0(state_fips_str, county_fips_str)
+  #print(full_fips_code)
+  
+  return(full_fips_code)
+}
+```
+
+Fipscodes dataset can be found here:
+
+<https://www.census.gov/geographies/reference-files/2021/demo/popest/2021-fips.html>
+
+```{r}
+#| label: county-mapping-data-prep
+gov_fipscodes <- readr::read_csv('data/all-geocodes-v2021.csv', skip = 4)
+
+gov_fipscodes_clean <- gov_fipscodes |>
+  rename(
+    county_fips = 'County Code (FIPS)',
+    state_fips = 'State Code (FIPS)',
+    area_name = 'Area Name (including legal/statistical area description)'
+  ) |>
+  filter(
+    county_fips != "000",
+    state_fips != "00"
+  ) |>
+  mutate(
+    state_fips = as.numeric(state_fips),
+    county_fips = as.numeric(county_fips)
+  ) |>
+  select(state_fips, county_fips, area_name)
+
+complete_codes = c(1, 2, 4, 201, 203)
+
+#Fips codes can change over time ...
+#So even if R packages are up to date, the data may not be
+
+comp_mapping <- comp_internet |>
+  select(
+     "county_fips" = "GTCO", 
+     "Status" = "HUFINAL",
+     "state_fips" = "GESTFIPS", 
+     "CBSAcode" = "GTCBSA",
+     "UseDesktop" = "HEDESKTP", 
+     "UseLaptop" = "HELAPTOP",  
+     "UseTablet" = "HETABLET",
+     "UseSmartphone" = "HEMPHONE",
+     "UseWearable" = "HEWEARAB",
+     "UseInternet" = "HEINHOME",
+     "UseInternetSchool" = "HEINSCHL", 
+     "UseDataplan" = "HEMOBDAT",
+     "UseInternetTrainEdu" = "PEEDTRAI"
+      ) |>
+  drop_na(state_fips, county_fips) |>
+  filter(
+    any(Status == complete_codes),
+    county_fips != "0",
+  ) |>
+  mutate(
+    fips = combineFips(state_fips, county_fips),
+    state = fips_info(state_fips)$full
+  ) |>
+  group_by(state_fips, county_fips, fips, state, UseDesktop) |>
+  count() |>
+  filter(UseDesktop == 1 | UseDesktop == 2) |>
+  pivot_wider(
+    names_from = UseDesktop,
+    values_from = n
+  ) |>
+  rename( Yes = "1", No = "2" ) |>
+  mutate(porportion = Yes/(Yes + No))
+
+fips_info(01041)
+
+#Show distribution of country code
+comp_internet |>
+  group_by(GTCO) |>
+  summarise( count = n())
+
+#Show how manny nonzero country codes there were
+comp_internet |>
+  filter(GTCO != 0) |>
+  summarise( count = n())
+```
+
+```{r}
+#| label: mapping-internet-use
+#Read the books on mapping + spatial viz
+county_map <- map_data("county") |>
+  rename("state" = "region") |>
+  mutate(
+    "state" = str_to_title(state),
+    "subregion" = str_to_title(subregion)
+    )
+
+fipsCoded <- merge(comp_mapping, gov_fipscodes_clean, by = c("state_fips", "county_fips")) |>
+  mutate(
+    subregion = word(area_name, start = 1, end = 1)
+  ) |>
+  rename(
+    "county" = "area_name"
+  ) |>
+  mutate(
+    "fips" = combineFips(state_fips, county_fips)
+  )
+
+#Unfortunately mapping by county isn't particularly useful due to lack of data
+internet_map <- fipsCoded |>
+  left_join(county_map, by = join_by(subregion == subregion, state == state))
+
+us_map <- merge(comp_mapping, county_map, by = c("count"))
+
+#us_map |>
+internet_map |>
+  ggplot(aes(x = long, y = lat, group = group, fill = porportion)) +
+  geom_polygon(color = "black") +
+  theme_void()
+```
+
+```{r}
+#| label: mapping-internet-use-usmaps-package
+
+fips_trimmed <- fipsCoded |>
+  select(fips, state, county, porportion)
+
+#Map for porportion of people 
+plot_usmap(data = fips_trimmed, 
+           values = "porportion",
+           regions = "counties") +
+  scale_fill_continuous(low = "white", high = "red", name = "Porportion of those who report using Internet") + 
+  labs(title = "County Map")
+
+
+plot_usmap(data = comp_mapping, values = "porportion", regions = "state") +
+  scale_fill_continuous(low = "white", high = "red", name = "Porportion of those who report using Internet") + 
+  labs(title = "District Map")
+
+fips_info()
+
+#plot_usmap(regions = "counties")
+
+#Investigate different map packages
+#Plotting two variables on one map is difficult
+#Consider mapping two colors for reading and math scores
+#geom_maps (maps package)
+#Dot Size + color
+#Shape + color 
+#Think about the story I want to tell
+#Mapping differences between math & reading scores
+#Think about direction of project: modeling/visualizing,deliverables, etc.
+
+#If I am dividing my data, note if there are differences in distributions/analysis
+#Potential mapping of district to county?
+#Stuff like the "FIPS" issues may be included in a process section, make sure to keep notes for doucmentation
+#Comparing diferent subjects, use the same scale so it's eaiser to compare standard deivations
+#Standard deviations are good for relative comparisons and can't be generalized to absolute values
+#See if there's another location identifier I could use
+#Look into another long scale survey/question internet/education online/enrichment
+#Investigate the large number of not specified county codes, possibbly information not provided. See if people completed online/not specified FIPs have other geogrpahic data.
+#Start bivariate 
+
+```
+
+```{r}
+#| label: mapping-test-scores
+
+state_grouped_all <- test_state_ys |>
+  filter(subgroup == "all") |>
+  group_by(sedafipsname, subject) |>
+  summarise( mean_ol = mean(ys_mn_2022_ol), mean_eb = mean(ys_mn_2022_eb
+)) |>
+  rename (
+    state = sedafipsname
+  )
+
+
+plot_usmap(data = state_grouped_all |> filter(subject == "mth"), values = "mean_ol", regions = "state") +
+  scale_fill_continuous(low = "red", high = "white", name = "Test Score Difference from 2019 in standard deviations") + 
+  labs(title = "State Map")
+```
+
+```{r}
+#| label: looking-into-missing-county-data
+
+census_clean <- comp_internet |>
+  select(
+     "county_fips" = "GTCO", 
+     "state_fips" = "GESTFIPS", 
+     "Status" = "HUFINAL",
+     "CBSAcode" = "GTCBSA",
+     "UseDesktop" = "HEDESKTP", 
+     "UseLaptop" = "HELAPTOP",  
+     "UseTablet" = "HETABLET",
+     "UseSmartphone" = "HEMPHONE",
+     "UseWearable" = "HEWEARAB",
+     "UseInternet" = "HEINHOME",
+     "UseInternetSchool" = "HEINSCHL", 
+     "UseDataplan" = "HEMOBDAT",
+     "UseInternetTrainEdu" = "PEEDTRAI"
+      )
+
+valid_county <- census_clean |>
+  filter(
+    county_fips != 0
+  ) |>
+  mutate(
+    state = fips_info(state_fips)$full,
+  ) |>
+  group_by(state, Status) |>
+  count() 
+
+valid_county_sum <- valid_county |>
+  group_by(Status) |>
+  summarise(n = sum(n)) |>
+  arrange(-n)
+
+invalid_county <- census_clean |>
+  filter(
+    county_fips == 0
+  ) |>
+  mutate(
+    state = fips_info(state_fips)$full,
+  ) |>
+  group_by(state, Status) |>
+  count()
+
+invalid_county_sum <- invalid_county |>
+  group_by(Status) |>
+  summarise(n = sum(n)) |>
+  arrange(-n)
+
+valid_county_status_plot <- ggplot(valid_county_sum |> slice(1:10)) +
+  geom_col(aes(x = reorder(Status, -n), y = n) ) +
+  #geom_col(data = invalid_county_sum) +
+  labs(
+    title = "Distribution of Codes",
+    subtitle = "Among Responses with Valid counties"
+  ) +
+  scale_y_continuous( limits = c(0, 60000) )
+
+invalid_county_status_plot <- ggplot(invalid_county_sum |> slice(1:10)) +
+  geom_col(aes(x = reorder(Status, -n), y = n)) +
+  labs(
+    title = "Distribution of codes",
+    subtitle = "Among Responses with Invalid counties"
+  ) +
+  scale_y_continuous( limits = c(0, 60000) )
+
+valid_county_status_plot + invalid_county_status_plot
+```
+
+Code Mappings for "Status"
+
+1: Fully Complete CATI (computer-assisted telephone interviewing)
+
+2: Partially Complete CATI
+
+201: CAPI (computer-assisted personal interviewing)
+
+There appears to be no correlation between the interview completion
+
+```{r}
+#| label: bivariate-mapping
+
+#Mapping by state since county data is very incomplete
+comp_state_mapping <- comp_internet |>
+  select(
+     "county_fips" = "GTCO", 
+     "Status" = "HUFINAL",
+     "state_fips" = "GESTFIPS", 
+     "CBSAcode" = "GTCBSA",
+     "UseDesktop" = "HEDESKTP", 
+     "UseLaptop" = "HELAPTOP",  
+     "UseTablet" = "HETABLET",
+     "UseSmartphone" = "HEMPHONE",
+     "UseWearable" = "HEWEARAB",
+     "UseInternet" = "HEINHOME",
+     "UseInternetSchool" = "HEINSCHL", 
+     "UseDataplan" = "HEMOBDAT",
+     "UseInternetTrainEdu" = "PEEDTRAI"
+      ) |>
+  drop_na(state_fips, county_fips) |>
+  filter(
+    any(Status == complete_codes)
+  ) |>
+  mutate(
+    state = fips_info(state_fips)$full
+  ) |>
+  group_by(state, UseDesktop) |>
+  count() |>
+  filter(UseDesktop == 1 | UseDesktop == 2) |>
+  pivot_wider(
+    names_from = UseDesktop,
+    values_from = n
+  ) |>
+  rename( Yes = "1", No = "2" ) |>
+  mutate(porportion = Yes/(Yes + No))
+
+state_map <- map_data("state") |>
+  mutate(
+  "region" = str_to_title(region),
+  ) 
+
+internet_map <- comp_state_mapping |>
+  left_join(state_map, by = join_by(state == region))
+
+state_centroids <- state_map|>
+  group_by(region) |>
+  summarise( long = mean (long), lat = mean(lat))
+
+score_map <- state_grouped_all |>
+  left_join(state_centroids, by = join_by(state == region))
+
+
+ggplot(internet_map, aes(x = long, y = lat)) +
+    geom_polygon(aes(group = group, fill = porportion), color = "black") +
+    geom_point(data = score_map, size = 4, aes(color = mean_ol)) +
+    scale_color_viridis_c(option = "A") +
+    theme_void() +
+    labs(
+      fill = "Porportion of Reported\nInternet Usage"
+    )
+```
+
+```{r}
+#| label: examining-county-and-cbsa-codes
+
+#Show distribution of country codes
+comp_internet |>
+  group_by(GTCO) |>
+  summarise( count = n())
+
+#Show how manny nonzero country codes there were
+comp_internet |>
+  filter(GTCO != 0) |>
+  summarise( count = n())
+
+#Distribution of CBSA codes
+comp_internet |>
+  group_by(GTCBSA) |>
+  count()
+  arrange(-n)
+  
+#Show how many nonzero CBSA codes
+comp_internet |>
+  filter(GTCBSA != 0) |>
+  count()
+```
+
+Potential datasets to look into
+
+Household income in the past year
+
+<https://data.census.gov/table/ACSST1Y2021.S2503?t=Financial%20Characteristics&g=010XX00US$0500000&y=2021&tp=true>
+
+Age + Race Demographics
+
+<https://data.census.gov/table/ACSDP1Y2021.DP05?g=010XX00US$0500000&y=2021&tp=true>
+
+Characteristics of Foreign Born Population
+
+<https://data.census.gov/table/ACSST1Y2021.S0501?g=010XX00US$0500000&y=2021&tp=true>
+
+Mapping districts to counties (NCES dataset?)
+
+<https://nces.ed.gov/ccd/districtsearch/district_detail.asp?Search=1&details=1&InstName=Chapel+Hill-Carrboro+City+Schools&DistrictType=1&DistrictType=2&DistrictType=3&DistrictType=4&DistrictType=5&DistrictType=6&DistrictType=7&DistrictType=8&DistrictType=9&NumOfStudentsRange=more&NumOfSchoolsRange=more&ID2=3700720>
