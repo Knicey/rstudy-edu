@@ -446,3 +446,17 @@ Additional Metrics
 -   Recovery Strategies
 
 -   Inner-district disparities among schools
+
+Referenced Reports/Resources
+
+-   <https://www.nytimes.com/interactive/2024/01/31/us/pandemic-learning-loss-recovery.html>
+
+-   [https://www.nytimes.com/interactive/2024/02/01/upshot/learning-loss-school-districts.html](https://www.nytimes.com/interactive/2024/02/01/upshot/learning-loss-school-districts.html?searchResultPosition=10)
+
+-   <https://www.nytimes.com/2023/12/09/opinion/education-learning-loss.html>
+
+-   <https://www.nytimes.com/2023/11/17/us/chronic-absenteeism-pandemic-recovery.html>
+
+-   <https://educationrecoveryscorecard.org/>
+
+-   <https://edopportunity.org/>
