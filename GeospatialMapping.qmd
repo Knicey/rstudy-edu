@@ -20,14 +20,18 @@ library(dplyr)
 library(stringr)
 library(usmap)
 library(maps)
-
+library(readxl)
 ```
 
 ```{r}
 #| label: load-data
 #| echo: false
 #| message: false
+
+# 2021 Census Supplement about Internet and Computer Usage
 comp_internet <- readr::read_csv('data/nov21pub.csv')
+
+# Academic performance across school districts collected by The Educational Opportunity Project at Stanford
 test_scores_cov <- readr::read_csv('data/seda2023_cov_state_annual.csv')
 test_admindist_gys <- readr::read_csv('data/seda2023_admindist_poolsub_gys_updated_20240205.csv')
 test_admindist_ys <- readr::read_csv('data/seda2023_admindist_poolsub_ys_updated_20240205.csv')
@@ -152,11 +156,8 @@ fipsCoded <- merge(comp_mapping, gov_fipscodes_clean, by = c("state_fips", "coun
 
 #Unfortunately mapping by county isn't particularly useful due to lack of data
 internet_map <- fipsCoded |>
-  left_join(county_map, by = join_by(subregion == subregion, state == state))
+  full_join(county_map, by = join_by(subregion == subregion, state == state))
 
-us_map <- merge(comp_mapping, county_map, by = c("count"))
-
-#us_map |>
 internet_map |>
   ggplot(aes(x = long, y = lat, group = group, fill = porportion)) +
   geom_polygon(color = "black") +
@@ -169,21 +170,12 @@ internet_map |>
 fips_trimmed <- fipsCoded |>
   select(fips, state, county, porportion)
 
-#Map for porportion of people 
+#Map for porportion of people that report using a desktop by county
 plot_usmap(data = fips_trimmed, 
            values = "porportion",
            regions = "counties") +
   scale_fill_continuous(low = "white", high = "red", name = "Porportion of those who report using Internet") + 
   labs(title = "County Map")
-
-
-plot_usmap(data = comp_mapping, values = "porportion", regions = "state") +
-  scale_fill_continuous(low = "white", high = "red", name = "Porportion of those who report using Internet") + 
-  labs(title = "District Map")
-
-fips_info()
-
-#plot_usmap(regions = "counties")
 
 #Investigate different map packages
 #Plotting two variables on one map is difficult
@@ -202,7 +194,7 @@ fips_info()
 #Standard deviations are good for relative comparisons and can't be generalized to absolute values
 #See if there's another location identifier I could use
 #Look into another long scale survey/question internet/education online/enrichment
-#Investigate the large number of not specified county codes, possibbly information not provided. See if people completed online/not specified FIPs have other geogrpahic data.
+#Investigate the large number of not specified county codes, possibbly information not provided. See if people completed online/not specified FIPs have other geograpahic data.
 #Start bivariate 
 
 ```
@@ -223,7 +215,25 @@ state_grouped_all <- test_state_ys |>
 plot_usmap(data = state_grouped_all |> filter(subject == "mth"), values = "mean_ol", regions = "state") +
   scale_fill_continuous(low = "red", high = "white", name = "Test Score Difference from 2019 in standard deviations") + 
   labs(title = "State Map")
+
+# Neither the maps package or the USMaps package support mapping by district
+# I will try mapping districts to counties
+# https://www.census.gov/programs-surveys/saipe/guidance-geographies/districts-counties.html
+# If this doesn't work out, will likely have to use the sf package with shapefiles
+# One thing 
+
+# US Census Data on District by County
+district_by_county <- read_excel("data/sdlist-21.xls", skip = 2)
+
+# US Census Small Area Income and Poverty Estimates (SAIPE) by District
+saipe_district <- read_excel("data/ussd22.xls", skip = 2)
 ```
+
+Something to consider, sometimes states can have duplicate county names
+
+<https://www.census.gov/programs-surveys/saipe/guidance-geographies/same-name/2022.html>
+
+It is really important that I use DistrictID for each unique district.
 
 ```{r}
 #| label: looking-into-missing-county-data
@@ -294,6 +304,8 @@ invalid_county_status_plot <- ggplot(invalid_county_sum |> slice(1:10)) +
 
 valid_county_status_plot + invalid_county_status_plot
 ```
+
+There does not appear to be a significant difference in the completion code distribution between respondents in valid counties vs invalid counties
 
 Code Mappings for "Status"
 
@@ -368,8 +380,12 @@ ggplot(internet_map, aes(x = long, y = lat)) +
     )
 ```
 
+Unfortunately, it's really hard to make meaningful conclusions or analysis about state metrics
+
 ```{r}
 #| label: examining-county-and-cbsa-codes
+
+#Since county codes did not cover a significant geographic portion of the US, I want to see if CBSA codes could provide better coverage
 
 #Show distribution of country codes
 comp_internet |>
@@ -384,7 +400,7 @@ comp_internet |>
 #Distribution of CBSA codes
 comp_internet |>
   group_by(GTCBSA) |>
-  count()
+  count() |>
   arrange(-n)
   
 #Show how many nonzero CBSA codes
@@ -393,20 +409,37 @@ comp_internet |>
   count()
 ```
 
-Potential datasets to look into
+In conclusion, while there are fewer invalid/incomplete CBSA codes, a vast majority of other datasets tend to use districts or counties. As such, I will not be moving forward with CBSA codes.
 
-Household income in the past year
+#### More Resources to Consider
 
-<https://data.census.gov/table/ACSST1Y2021.S2503?t=Financial%20Characteristics&g=010XX00US$0500000&y=2021&tp=true>
+Additional Census Data:
 
-Age + Race Demographics
+-   Household income in the past year\
+    <https://data.census.gov/table/ACSST1Y2021.S2503?t=Financial%20Characteristics&g=010XX00US$0500000&y=2021&tp=true>
 
-<https://data.census.gov/table/ACSDP1Y2021.DP05?g=010XX00US$0500000&y=2021&tp=true>
+-   Age + Race Demographics\
+    <https://data.census.gov/table/ACSDP1Y2021.DP05?g=010XX00US$0500000&y=2021&tp=true>
 
-Characteristics of Foreign Born Population
+-   Characteristics of Foreign Born Population\
+    <https://data.census.gov/table/ACSST1Y2021.S0501?g=010XX00US$0500000&y=2021&tp=true>
 
-<https://data.census.gov/table/ACSST1Y2021.S0501?g=010XX00US$0500000&y=2021&tp=true>
+School Budget/School Opening/State Funding
 
-Mapping districts to counties (NCES dataset?)
+<https://about.burbio.com/#sign-up>
 
-<https://nces.ed.gov/ccd/districtsearch/district_detail.asp?Search=1&details=1&InstName=Chapel+Hill-Carrboro+City+Schools&DistrictType=1&DistrictType=2&DistrictType=3&DistrictType=4&DistrictType=5&DistrictType=6&DistrictType=7&DistrictType=8&DistrictType=9&NumOfStudentsRange=more&NumOfSchoolsRange=more&ID2=3700720>
+Absenteeism
+
+<https://www.future-ed.org/tracking-state-trends-in-chronic-absenteeism/>
+
+Additional Metrics
+
+-   Literacy/Active Reading in Households
+
+-   Education level of parents/family
+
+-   General COVID statistics (cases, deaths, etc.)
+
+-   Recovery Strategies
+
+-   Inner-district disparities among schools

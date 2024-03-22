@@ -27,7 +27,10 @@ library(maps)
 #| label: load-data
 #| echo: false
 #| message: false
+# 2021 Census Supplement about Internet and Computer Usage
 comp_internet <- readr::read_csv('data/nov21pub.csv')
+
+# Academic performance across school districts collected by The Educational Opportunity Project at Stanford
 test_scores_cov <- readr::read_csv('data/seda2023_cov_state_annual.csv')
 test_admindist_gys <- readr::read_csv('data/seda2023_admindist_poolsub_gys_updated_20240205.csv')
 test_admindist_ys <- readr::read_csv('data/seda2023_admindist_poolsub_ys_updated_20240205.csv')
