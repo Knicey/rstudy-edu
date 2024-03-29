@@ -417,6 +417,11 @@ The Educational Opportunity Project Standardizes their data with the Stanford Ed
 ```{r}
 #| label: district-scores-scatter
 
+test_admindist_gys <- test_admindist_gys |>
+  mutate(
+    diff22_23 = gys_mn_2023_ol - gys_mn_2022_ol
+  )
+
 ggplot(test_admindist_gys) +
   geom_jitter(
     aes(
@@ -427,7 +432,7 @@ ggplot(test_admindist_gys) +
     ) +
   facet_grid(
     cols = vars(subject)
-  ) 
+  )
 
 ggplot(test_admindist_gys) +
   geom_jitter(
@@ -465,8 +470,18 @@ ggplot(test_admindist_gys |> filter (subject == "mth")) +
     limits = c(-6, 6)
   )
 
-mean(na.omit(test_admindist_gys$gys_mn_2022_ol))
+ggplot(test_admindist_gys|> filter (subject == "mth", subgroup == "all")) +
+  geom_jitter(
+    aes(
+      x = 0,
+      y = diff22_23,
+      color = diff22_23,
+      ),
+    ) +
+  scale_x_continuous(limits = c(-1,1)) +
+  scale_color_viridis_c()
 
+mean(na.omit(test_admindist_gys$gys_mn_2022_ol))
 median(na.omit(test_admindist_gys$gys_mn_2022_ol))
 median(na.omit(test_admindist_gys$gys_mn_2023_ol))
 
@@ -487,6 +502,14 @@ ggplot(test_admindist_gys) +
   geom_density(
     aes(
       x = gys_mn_2023_ol,
+      ),
+    fill = "orange"
+  )
+
+ggplot(test_admindist_gys) +
+  geom_density(
+    aes(
+      x = diff22_23,
       ),
     fill = "orange"
   )
@@ -579,6 +602,18 @@ Todo:
 
         -   Filters: metrics
 
--   By next week: Try to finalize datasets and make some versions of the scatterplot
+-   Look into district level data
 
--   
+    -   What data the project uses
+
+    -   Their methodology
+
+    -   How I can merge in outside datasets
+
+-   Percent of counties with multiple districts
+
+    -   Determines how important it is to get district level data
+
+-   If no district-level data, looking at comparisons by county (large disparities)
+
+-   SEDA Technical Document
