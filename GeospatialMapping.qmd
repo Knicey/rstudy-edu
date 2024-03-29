@@ -35,11 +35,9 @@ library(readxl)
 comp_internet <- readr::read_csv('data/nov21pub.csv')
 
 # Academic performance across school districts collected by The Educational Opportunity Project at Stanford
-test_scores_cov <- readr::read_csv('data/seda2023_cov_state_annual.csv')
 test_admindist_gys <- readr::read_csv('data/seda2023_admindist_poolsub_gys_updated_20240205.csv')
 test_admindist_ys <- readr::read_csv('data/seda2023_admindist_poolsub_ys_updated_20240205.csv')
-test_state_gys <- readr::read_csv('data/seda2023_state_poolsub_gys_updated_20240205.csv')
-test_state_ys <- readr::read_csv('data/seda2023_state_poolsub_ys_updated_20240205.csv')
+test_state_ys = read_csv("data/seda2023_state_poolsub_ys_updated_20240205.csv")
 ```
 
 ```{r}
@@ -236,7 +234,7 @@ Something to consider, sometimes states can have duplicate county names
 
 <https://www.census.gov/programs-surveys/saipe/guidance-geographies/same-name/2022.html>
 
-It is really important that I use DistrictID for each unique district.
+It is really important that I use DistrictID for each unique **SCHOOL** district.
 
 ```{r}
 #| label: looking-into-missing-county-data
@@ -414,6 +412,86 @@ comp_internet |>
 
 In conclusion, while there are fewer invalid/incomplete CBSA codes, a vast majority of other datasets tend to use districts or counties. As such, I will not be moving forward with CBSA codes.
 
+The Educational Opportunity Project Standardizes their data with the Stanford Education Data Archive (SEDA). They created their own identifier for each district, `SEDA Administrative District ID`, which details can be found here: <https://edopportunity.org/methods/>
+
+```{r}
+#| label: district-scores-scatter
+
+ggplot(test_admindist_gys) +
+  geom_jitter(
+    aes(
+      x = subgroup,
+      y = gys_mn_2022_ol,
+      color = gys_mn_2022_ol
+      ),
+    ) +
+  facet_grid(
+    cols = vars(subject)
+  ) 
+
+ggplot(test_admindist_gys) +
+  geom_jitter(
+    aes(
+      x = subgroup,
+      y = gys_mn_2023_ol,
+      color = gys_mn_2023_ol
+      ),
+    ) +
+  facet_grid(
+    cols = vars(subject)
+  ) 
+
+ggplot(test_admindist_gys |> filter (subject == "mth")) +
+  geom_jitter(
+    aes(
+      x = subgroup,
+      y = gys_mn_2022_ol,
+      color = gys_mn_2022_ol
+      ),
+    ) +
+  scale_y_continuous(
+    limits = c(-6, 6)
+  ) +
+
+ggplot(test_admindist_gys |> filter (subject == "mth")) +
+  geom_jitter(
+    aes(
+      x = subgroup,
+      y = gys_mn_2023_ol,
+      color = gys_mn_2023_ol
+      ),
+    ) +
+  scale_y_continuous(
+    limits = c(-6, 6)
+  )
+
+mean(na.omit(test_admindist_gys$gys_mn_2022_ol))
+
+median(na.omit(test_admindist_gys$gys_mn_2022_ol))
+median(na.omit(test_admindist_gys$gys_mn_2023_ol))
+
+```
+
+```{r}
+#| label: district-scores-density
+
+ggplot(test_admindist_gys) +
+  geom_density(
+    aes(
+      x = gys_mn_2022_ol,
+      ),
+    fill = "orange"
+  )
+
+ggplot(test_admindist_gys) +
+  geom_density(
+    aes(
+      x = gys_mn_2023_ol,
+      ),
+    fill = "orange"
+  )
+```
+
 #### More Resources to Consider
 
 Additional Census Data:
@@ -441,9 +519,13 @@ Additional Metrics
 
 -   Education level of parents/family
 
+    -   Bachelor's %
+
 -   General COVID statistics (cases, deaths, etc.)
 
 -   Recovery Strategies
+
+    -   Look into outliers in the trends and what they are doing
 
 -   Inner-district disparities among schools
 
@@ -460,3 +542,43 @@ Referenced Reports/Resources
 -   <https://educationrecoveryscorecard.org/>
 
 -   <https://edopportunity.org/>
+
+Todo:
+
+-   See if I can map school district to congressional district
+
+-   Try to map congressional districts
+
+-   How to handle changing districts
+
+    -   Look into other reports
+
+    -   Census website
+
+    -   Maybe just pick a specific year
+
+    -   Take aggregate measurement over time periods
+
+    -   Possibly look at the data across years and determine if there's enough variability
+
+-   Main Visualization:
+
+    -   Scatterplot (based on <https://educationrecoveryscorecard.org/>)
+
+        -   Y: Reading/Math Scores
+
+        -   X: Some metric
+
+        -   Filters: other metrics (location, income, race, etc.)
+
+    -   Scatterplot
+
+        -   Y: Reading Score
+
+        -   X: Math score
+
+        -   Filters: metrics
+
+-   By next week: Try to finalize datasets and make some versions of the scatterplot
+
+-   
