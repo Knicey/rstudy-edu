@@ -34,9 +34,7 @@ Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 6)
 
 test_admindist_gys <- readr::read_csv('data/seda2023_admindist_poolsub_gys_updated_20240205.csv')
 
-income_district <- readr::read_csv("data/ACS Data/ACSST1Y2021.S1902-2024-04-10T232024.csv")
-
-income_district_alt <- readr::read_csv("data/ACS Data/ACSST1Y2021.S1902-2024-04-10T232130.csv")
+income_district <- readr::read_csv("data/ACS Data/ACSST1Y2021.S1902-2024-04-10T232130.csv")
 
 school_districts <- read_excel("data/sdlist-21.xls", skip = 2)
 ```
@@ -57,11 +55,12 @@ district_count_plot <- ggplot() +
 ```
 
 ```{r}
-#| label: income-plot
+#| label: income-data-prep
 
 #Data Cleaning to Fix Column Names and Allignment
+#Only 737 school districts in this dataset, the education data has 7390 school districts
 
-income_district_cleaned <- income_district_alt |>
+income_district_cleaned <- income_district |>
   clean_names()
 
 income_district_estimates <- income_district_cleaned |>
@@ -85,11 +84,14 @@ income_district_percentages <- income_district_cleaned |>
   filter(
     grepl("District", school_district)
   )
+```
+
+```{r}
+#| label: ssi-percentage
+#Percentage of people that receive social security income
+
 
 ssi_percent_district <- income_district_percentages |>
-  select(
-    school_district,  household_income_all_households_with_social_security_income
-  ) |>
   rename(
     ssi_percent = household_income_all_households_with_social_security_income
   ) |>
@@ -100,9 +102,8 @@ ssi_percent_district <- income_district_percentages |>
     ssi_percent = sapply(gsub("(?<=\\d)%", "",ssi_percent, perl = T), as.numeric)
   )
 
-state.abb
+write.csv(ssi_percent_district, "data/ssi_percent_district.csv")
 
-word("Hello Pear World", start = 1, end = -3)
 
 ssi_percent_joined <- ssi_percent_district |>
   left_join(
@@ -110,10 +111,26 @@ ssi_percent_joined <- ssi_percent_district |>
     by = join_by(school_district == sedaadminname, state == stateabb)
   )
 
+
+# After filtering, only 248 school districts
 ssi_math <- ssi_percent_joined |>
   filter(
     subject == "mth",
-    subgroup == "hsp"
+    subgroup == "all"
+  ) |>
+  mutate(
+    ol_diff_2022_2023 = gys_mn_2023_ol - gys_mn_2022_ol,
+    ol_diff_2019_2022 = gys_mn_2022_ol - gys_mn_2019_ol,
+  )
+
+ssi_rla <- ssi_percent_joined |>
+  filter(
+    subject == "rla",
+    subgroup == "all"
+  ) |>
+  mutate(
+    ol_diff_2022_2023 = gys_mn_2023_ol - gys_mn_2022_ol,
+    ol_diff_2019_2022 = gys_mn_2022_ol - gys_mn_2019_ol,
   )
 
 ssi_math |>
@@ -121,7 +138,42 @@ ssi_math |>
   geom_point(
     aes(
       x = ssi_percent,
-      y = gys_mn_2022_ol)) 
+      y = gys_mn_2023_ol)
+    )
+
+ssi_rla |>
+  ggplot() +
+  geom_point(
+    aes(
+      x = ssi_percent,
+      y = gys_mn_2022_ol)
+    )
+
+test_selected_years <- test_admindist_gys |>
+  select(
+    sedaadmin, sedaadminname, stateabb, subject, subgroup, 
+    gys_mn_2019_ol, gys_mn_2022_ol, gys_mn_2023_ol
+  ) 
+
+test_wider <- test_selected_years |>
+  pivot_wider(
+    names_from = subject,
+    values_from = c(gys_mn_2019_ol, gys_mn_2022_ol, gys_mn_2023_ol)
+  )
+
+
+ggplot(test_wider |>  filter(subgroup == "all")) +
+  geom_point(
+    aes(
+      x = gys_mn_2023_ol_mth,
+      y = gys_mn_2023_ol_rla,
+    )
+  ) +
+  geom_hline(yintercept = 0) +
+  geom_vline(xintercept = 0)
+
+write.csv(test_wider, "data/test_admindist_wider.csv")
+
 ```
 
 \
