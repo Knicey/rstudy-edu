@@ -1,0 +1,129 @@
+---
+title: "Geospatial Mapping"
+format: pdf
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Libraries/Packages
+
+```{r}
+#| label: load-pkg-data
+#| echo: false
+#| message: false
+#| warning: false
+library(knitr) 
+library(tidyverse)
+library(patchwork)
+library(stringr)
+library(usmap)
+library(maps)
+library(janitor)
+library(readxl)
+library(stringr)
+
+```
+
+```{r}
+#| label: load-data 
+#| echo: false 
+#| message: false
+
+Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 6)
+
+test_admindist_gys <- readr::read_csv('data/seda2023_admindist_poolsub_gys_updated_20240205.csv')
+
+income_district <- readr::read_csv("data/ACS Data/ACSST1Y2021.S1902-2024-04-10T232024.csv")
+
+income_district_alt <- readr::read_csv("data/ACS Data/ACSST1Y2021.S1902-2024-04-10T232130.csv")
+
+school_districts <- read_excel("data/sdlist-21.xls", skip = 2)
+```
+
+#### How many counties have multiple school districts?
+
+```{r}
+#| label: district-counts
+
+county_district_count <- school_districts |>
+  group_by(`State FIPS`,`County FIPS`) |>
+  count() |>
+  group_by(n) |>
+  count()
+
+district_count_plot <- ggplot() +
+  geom_point(county_district_count, mapping = aes(x = n, y = nn))
+```
+
+```{r}
+#| label: income-plot
+
+#Data Cleaning to Fix Column Names and Allignment
+
+income_district_cleaned <- income_district_alt |>
+  clean_names()
+
+income_district_estimates <- income_district_cleaned |>
+  rename(
+    school_district = label_grouping
+  ) |>
+  mutate(
+    SchoolDistrict = lag(school_district, n = 2, default = NULL)
+  ) |>
+  filter(
+    grepl("District", school_district)
+  )
+
+income_district_percentages <- income_district_cleaned |>
+  rename(
+    school_district = label_grouping
+  ) |>
+  mutate(
+    school_district = lag(school_district, n = 5, default = NULL)
+  ) |>
+  filter(
+    grepl("District", school_district)
+  )
+
+ssi_percent_district <- income_district_percentages |>
+  select(
+    school_district,  household_income_all_households_with_social_security_income
+  ) |>
+  rename(
+    ssi_percent = household_income_all_households_with_social_security_income
+  ) |>
+  mutate(
+    state = word(school_district, -1),
+    school_district = word(school_district, start = 1, end = -4),
+    state = state.abb[match(state,state.name)],
+    ssi_percent = sapply(gsub("(?<=\\d)%", "",ssi_percent, perl = T), as.numeric)
+  )
+
+state.abb
+
+word("Hello Pear World", start = 1, end = -3)
+
+ssi_percent_joined <- ssi_percent_district |>
+  left_join(
+    test_admindist_gys,
+    by = join_by(school_district == sedaadminname, state == stateabb)
+  )
+
+ssi_math <- ssi_percent_joined |>
+  filter(
+    subject == "mth",
+    subgroup == "hsp"
+  )
+
+ssi_math |>
+  ggplot() +
+  geom_point(
+    aes(
+      x = ssi_percent,
+      y = gys_mn_2022_ol)) 
+```
+
+\
+\
+\

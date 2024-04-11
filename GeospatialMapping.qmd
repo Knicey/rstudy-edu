@@ -566,11 +566,7 @@ Referenced Reports/Resources
 
 -   <https://edopportunity.org/>
 
-Todo:
-
--   See if I can map school district to congressional district
-
--   Try to map congressional districts
+General Plan:
 
 -   How to handle changing districts
 
@@ -606,14 +602,84 @@ Todo:
 
     -   What data the project uses
 
+        -   <https://edopportunity.org/help-faq/#how-is-ses>
+
+        -   For socioeconomic status, they use data from the American Community Survey (found on data.census.gov)
+
+        -   data/ACS_SchoolDistricts_Socioeconomic_2021/ACSDP1Y2021.DP04-Data.csv
+
+            -   Monthly Owner Costs
+
+            -   Monthly Owner Costs as percentage of household income
+
+            -   Owner-occupied units value
+
     -   Their methodology
 
+        -   <https://edopportunity.org/docs/seda2023_documentation_20240130.pdf>
+
     -   How I can merge in outside datasets
+
+        -   Census datasets have data per school district
 
 -   Percent of counties with multiple districts
 
     -   Determines how important it is to get district level data
 
--   If no district-level data, looking at comparisons by county (large disparities)
-
 -   SEDA Technical Document
+
+    -   What is a SEDA Administrative District?
+
+        -   In 4.1, they used geographic districts
+
+            -   If you had magnet/charter schools, it could have been operated in district A but managed by district B
+
+        -   In 5.0, they are using administrative districts
+
+            -   An administrative districts represents all schools that are managed by the district
+
+    -   Should be really easy to map SEDA Admin district to ACS School District
+
+-   Mapping in Shiny
+
+    -   Hard to avoid re-rendering the map every time a selection is changed
+
+        -   side note: maybe find a way to reduce render time
+
+    -   Maps package options: (sf, usmaps, maps, leaflet)
+
+        -   sf: Probably the most robust and customizable
+
+            -   I can get shapefiles from government websites for school districts
+
+        -   usmaps: More intuitive to use, but lack of division options
+
+        -   maps: Less intuitive
+
+        -   leaflet: More functionality (zoom, pre-rendering)
+
+-   Scatterplot in Shiny
+
+    -   Look into hovering/clicking functionality for plotted points
+
+        -   Be able to register that a click occurred and where
+
+-   Todo:
+
+    -   Data Joining (ACS to Academic Performance)
+
+        -   If any issues, try to find quick fixes
+
+        -   Even if there issues, keep moving forward
+
+    -   Create the scatterplot comparing some socioeconomic metric (x) to reading/math scores (y)
+
+        -   Include other aesthetics once the point distribution is good
+
+    -   Create antoher scatterplot that compares reading score (x) to math score (y)
+
+        -   Try to put in additional aesthetics (socioeconomic)
+
+    -   Start working on the app
+
+        -   Put one of my nice plots into the app
