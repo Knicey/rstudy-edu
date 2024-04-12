@@ -176,6 +176,102 @@ write.csv(test_wider, "data/test_admindist_wider.csv")
 
 ```
 
-\
-\
-\
+Todo:
+
+-   Potentially pandemic affected survey coverage
+
+    -   2019 may have most coverage
+
+    -   2022 would be post pandemic
+
+-   ACS data from one year is usually generalizable to other years
+
+-   Shiny App Development
+
+    -   Figure out what other variables to filter/customize by
+
+    -   Drop-down menu variables
+
+        -   Make all the labels human readable (not default)
+
+        -   Make choices also affect axis + plot titles.
+
+        -   Keep the configuration menu on the side and affect all pages
+
+        -   Different ACS variables on the x axis
+
+        -   Math or Reading Scores
+
+        -   Others?
+
+        -   Keep subgroup (demphasize)
+
+    -   Considerations about plots
+
+        -   Add in variable correlation
+
+        -   Fix the y-axis scale
+
+        -   Make it easier to distinguish above and below zero (improvement/non-improvement)
+
+        -   For dynamic axis/plot titles
+
+            -   Try to automate label creation (replace underscores with , capitalize every word)
+
+        -   Subtitle: For \_\_\_ students in \_\_\_ districts
+
+        -   Side: Consider making x-axis static within a variable
+
+        -   Side: Interactivity with points showing popups
+
+    -   About Page
+
+        -   Explain the project, where the data comes from, its coverage, etc.
+
+        -   Concise version of the report
+
+        -   Coverage Map
+
+            -   State map colored by count of school district
+
+        -   Explain limitations and issues with datasets and plots
+
+Writeup:
+
+-   Project Report (Hopefully to review on 4/26)
+
+    -   Summarizing reading and research
+
+    -   Lit review/background
+
+    -   Dataset descriptions
+
+        -   Academic performance data
+
+            -   Explain their grade calculation
+
+        -   ACS Data
+
+    -   Methodology
+
+        -   Data prep + Data cleaning
+
+        -   Consideration for district converage
+
+    -   Results
+
+        -   Description of the app
+
+        -   Takeaways + Conclusions
+
+    -   Discussion/Conclusion
+
+        -   Overall takeways answering the research question
+
+            -   The state of education post-pandemic
+
+        -   LImitations of my analysis/research
+
+        -   Future research steps
+
+-   Reflection on the project and experience
