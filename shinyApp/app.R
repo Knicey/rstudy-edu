@@ -10,25 +10,65 @@ library(rsconnect)
 
 # Load data --------------------------------------------------------------------
 
-test_wider <- read_csv('data/test_admindist_wider.csv')
+test_admindist_gys <- read_csv('data/seda2023_admindist_poolsub_gys_updated_20240205.csv')
+
+test_selected_years <- test_admindist_gys |>
+  select(
+    sedaadmin, sedaadminname, stateabb, subject, subgroup, 
+    gys_mn_2019_ol, gys_mn_2022_ol, gys_mn_2023_ol
+  ) 
+
+test_longer <- test_selected_years |>
+  pivot_longer(
+    cols = c(gys_mn_2019_ol, gys_mn_2022_ol, gys_mn_2023_ol),
+    names_to = "year",
+    values_to = "score"
+  ) |>
+  mutate(
+    year = str_sub(year, -7, -4)
+  )
+
+test_wider <- test_selected_years |>
+  pivot_wider(
+    names_from = subject,
+    values_from = c(gys_mn_2019_ol, gys_mn_2022_ol, gys_mn_2023_ol)
+  )
+
 ssi_percent_district <- read_csv('data/ssi_percent_district.csv')
 
 ssi_percent_joined <- ssi_percent_district |>
   left_join(
-    test_wider,
+    test_longer,
     by = join_by(school_district == sedaadminname, state == stateabb)
   )
 
-# Find all industries ----------------------------------------------------------
+# Find all choices ----------------------------------------------------------
 
 subgroup_choices <- test_wider |>
   distinct(subgroup) |>
   arrange(subgroup) |>
   pull(subgroup)
 
-# Randomly select a subgroup -----------------------------------
+subject_choices <- test_selected_years |>
+  distinct(subject) |>
+  arrange(subject) |>
+  pull(subject)
+
+
+#Take out year 2019 (this is the basis of comparison) ------------------------
+year_choices <- test_longer |>
+  distinct(year) |>
+  arrange(year) |>
+  filter(year != "2019") |>
+  pull(year)
+
+# Select default values -----------------------------------------------------
 
 selected_subgroup <- "all"
+
+selected_subject <- sample(subject_choices, 1)
+
+selected_year <- "2022"
 
 # Define UI --------------------------------------------------------------------
 
@@ -44,6 +84,23 @@ ui <- page_navbar(
       selected = selected_subgroup,
       options = list(plugins = "remove_button")
     ),
+    selectizeInput(
+      inputId = "year",
+      label = "Select a year:",
+      multiple = FALSE,
+      choices = year_choices,
+      selected = selected_year,
+      options = list(plugins = "remove_button")
+    ),
+    selectizeInput(
+      inputId = "subject",
+      label = "Select a subject:",
+      multiple = FALSE,
+      choices = subject_choices,
+      selected = selected_subject,
+      options = list(plugins = "remove_button")
+    ),
+    
     "Data comes from the Educational Opportunity Project at Stanford University."
   ),
   header = uiOutput("selected_subgroup"),
@@ -82,7 +139,11 @@ server <- function(input, output, session) {
   
   ssi_percent_joined_filtered <- reactive({
     ssi_percent_joined |>
-      filter(subgroup == input$subgroup)
+      filter(
+        subgroup == input$subgroup, 
+        subject == input$subject, 
+        year == input$year
+      )
   })
   
   # Plot of reading vs math scores
@@ -101,26 +162,36 @@ server <- function(input, output, session) {
         plot.title = element_text(size = 16, face = "bold"),
         axis.title = element_text(size = 14),
         axis.text = element_text(size = 12)
-      )
+      ) +
+      scale_y_continuous(limits = c(-7, 7) ) +
+      scale_x_continuous(limits = c(-7, 7) )
   })
   
-  # Plot of math scores vs ssi percentage
+  # Plot of test scores vs ssi percentage
   output$ssi_vs_math_plot <- renderPlot({
     ssi_percent_joined_filtered() |>
-      ggplot(aes(x = ssi_percent, y = gys_mn_2023_ol_mth)) +
+      ggplot(aes(x = ssi_percent, y = score)) +
       geom_point() +
       geom_smooth(method = "lm", se = FALSE) +
       labs(
         x = "Percentage of Families Receiving SSI",
-        y = "Math Scores",
-        title = "Change in Math Performance from 2019 to 2023 vs Percentage of Families Receiving SSI"
+        y = paste(input$subject , "Scores"),
+        title = paste(
+          "Change in", 
+          input$subject,
+          "Performance from 2019 to", 
+          input$year, 
+          "vs Percentage of Families Receiving SSI"
+          ),
+        subtitle = paste("Among", input$subgroup, "students")
       ) +
       theme_minimal() +
       theme(
         plot.title = element_text(size = 16, face = "bold"),
         axis.title = element_text(size = 14),
         axis.text = element_text(size = 12)
-      )
+      ) +
+      scale_y_continuous(limits = c(-7, 7) )
   })
 
   
