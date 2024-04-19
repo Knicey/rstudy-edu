@@ -95,8 +95,7 @@ ssi_percent_district <- income_district_percentages |>
   mutate(
     state = word(school_district, -1),
     school_district = word(school_district, start = 1, end = -4),
-    state = state.abb[match(state,state.name)],
-    household_income_all_households_with_social_security_income = sapply(gsub("(?<=\\d)%", "",household_income_all_households_with_social_security_income, perl = T), as.numeric)
+    state = state.abb[match(state,state.name)]
   )
 
 write.csv(ssi_percent_district, "data/acs_income_2021.csv")
