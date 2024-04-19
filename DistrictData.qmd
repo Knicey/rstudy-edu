@@ -172,7 +172,7 @@ write.csv(test_wider, "data/test_admindist_wider.csv")
 
 ```
 
-Todo:
+Todo (4/19/2024)
 
 -   Potentially pandemic affected survey coverage
 
@@ -232,9 +232,21 @@ Todo:
 
         -   Explain limitations and issues with datasets and plots
 
+Todo (4/26/24)
+
+App
+
+-   Look into Expansion with other variables or datasets
+
+-   Make all labels human readable
+
+-   Interactivity?
+
+-   About page
+
 Writeup:
 
--   Project Report (Hopefully to review on 4/26)
+-   Project Report
 
     -   Summarizing reading and research
 
