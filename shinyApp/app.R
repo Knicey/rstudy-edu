@@ -34,12 +34,16 @@ test_wider <- test_selected_years |>
     values_from = c(gys_mn_2019_ol, gys_mn_2022_ol, gys_mn_2023_ol)
   )
 
-ssi_percent_district <- read_csv('data/ssi_percent_district.csv')
+acs_income_2021 <- read_csv('data/acs_income_2021.csv')
 
-ssi_percent_joined <- ssi_percent_district |>
+acs_income_2021_joined <- acs_income_2021 |>
   left_join(
     test_longer,
     by = join_by(school_district == sedaadminname, state == stateabb)
+  ) |>
+  rename(
+    ssi_percent = household_income_all_households_with_social_security_income,
+    wages_salary = household_income_all_households_with_earnings_with_wages_or_salary_income
   )
 
 # Find all choices ----------------------------------------------------------
@@ -137,8 +141,8 @@ server <- function(input, output, session) {
       filter(subgroup == input$subgroup)
   })
   
-  ssi_percent_joined_filtered <- reactive({
-    ssi_percent_joined |>
+  acs_income_joined_filtered <- reactive({
+    acs_income_2021_joined |>
       filter(
         subgroup == input$subgroup, 
         subject == input$subject, 
@@ -150,7 +154,9 @@ server <- function(input, output, session) {
   output$reading_vs_math_plot <- renderPlot({
     test_wider_filtered() |>
       ggplot(aes(x = gys_mn_2023_ol_mth, y = gys_mn_2023_ol_rla)) +
-      geom_point() +
+      geom_point(aes(color = gys_mn_2023_ol_rla)) +
+      scale_color_gradientn(colours = c('white', "skyblue", 'red'),
+                            values = c(0, -1, 1)) +
       geom_smooth(method = "lm", se = FALSE) +
       labs(
         x = "Math Scores",
@@ -169,9 +175,11 @@ server <- function(input, output, session) {
   
   # Plot of test scores vs ssi percentage
   output$ssi_vs_math_plot <- renderPlot({
-    ssi_percent_joined_filtered() |>
+    acs_income_joined_filtered() |>
       ggplot(aes(x = ssi_percent, y = score)) +
-      geom_point() +
+      geom_point(aes(color = score)) +
+      scale_color_gradientn(colours = c('white', "skyblue", 'red'),
+                            values = c(0, -1, 1)) +
       geom_smooth(method = "lm", se = FALSE) +
       labs(
         x = "Percentage of Families Receiving SSI",

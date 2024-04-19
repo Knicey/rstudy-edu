@@ -92,17 +92,14 @@ income_district_percentages <- income_district_cleaned |>
 
 
 ssi_percent_district <- income_district_percentages |>
-  rename(
-    ssi_percent = household_income_all_households_with_social_security_income
-  ) |>
   mutate(
     state = word(school_district, -1),
     school_district = word(school_district, start = 1, end = -4),
     state = state.abb[match(state,state.name)],
-    ssi_percent = sapply(gsub("(?<=\\d)%", "",ssi_percent, perl = T), as.numeric)
+    household_income_all_households_with_social_security_income = sapply(gsub("(?<=\\d)%", "",household_income_all_households_with_social_security_income, perl = T), as.numeric)
   )
 
-write.csv(ssi_percent_district, "data/ssi_percent_district.csv")
+write.csv(ssi_percent_district, "data/acs_income_2021.csv")
 
 
 ssi_percent_joined <- ssi_percent_district |>
@@ -137,7 +134,7 @@ ssi_math |>
   ggplot() +
   geom_point(
     aes(
-      x = ssi_percent,
+      x = household_income_all_households_with_social_security_income,
       y = gys_mn_2023_ol)
     )
 
@@ -145,7 +142,7 @@ ssi_rla |>
   ggplot() +
   geom_point(
     aes(
-      x = ssi_percent,
+      x = household_income_all_households_with_social_security_income,
       y = gys_mn_2022_ol)
     )
 
