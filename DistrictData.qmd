@@ -240,9 +240,35 @@ App
 
 -   Make all labels human readable
 
+    -   Make them more intuitive
+
 -   Interactivity?
 
 -   About page
+
+-   Use the fixed color scale for all plots going forward
+
+-   Plots
+
+    -   Make the points bigger
+
+    -   Point outlining
+
+    -   Trend Line
+
+        -   Option to toggle it
+
+        -   Change trend line color?
+
+    -   Potentially plot year to year (2022 to 2023) to see more variation in Math vs Reading
+
+-   Sidebar Menu Expansion Options
+
+    -   Possibility to add a new drop down or exxpand the variable menu
+
+    -   Make menus hide if they don't apply to the current tab
+
+-   Download button on the data page
 
 Writeup:
 
@@ -283,3 +309,13 @@ Writeup:
         -   Future research steps
 
 -   Reflection on the project and experience
+
+-   Citing code/libraries
+
+    -   Only big ones like tidyverse and shiny
+
+Future?
+
+-   Competitions, contests, etc.
+
+-   Ask Mine
