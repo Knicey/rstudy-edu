@@ -7,7 +7,7 @@ library(scales)
 library(bslib)
 library(bsicons)
 library(rsconnect)
-library(dplyr)
+library(janitor)
 
 # Load data --------------------------------------------------------------------
 
@@ -54,6 +54,12 @@ acs_income_2021_narrow <- acs_income_2021 |>
   ) |>
   select_if(~ (is.character(.x))) |>
   relocate(state)
+
+#Dataset for Child Characteristics -------------------------------------------
+#acs_child_2021 <- read_csv('data/acs_child_characteristics_2021.csv', skip = 1)
+#Lacks Porportional Data, may not use
+
+
 
 #Turn all percentages to numeric ---------------------------------------------
 acs_income_2021_narrow[,-(1:2)] <- apply(acs_income_2021_narrow[, -(1:2)],2, function(x){
@@ -199,7 +205,7 @@ server <- function(input, output, session) {
       #  values = c(0, -1, 1)
       #) +
       scale_color_gradientn(
-        colors = c("red", "#FFFFE4", "skyblue"), 
+        colors = c("red", "#FFFFE4", "blue"), 
         limits = c(-7, 7)
       ) +
       geom_smooth(method = "lm", se = FALSE) +
@@ -223,8 +229,10 @@ server <- function(input, output, session) {
     acs_income_joined_filtered() |>
       ggplot(aes(x = get(input$income), y = score)) +
       geom_point(aes(color = score)) +
-      scale_color_gradientn(colors = c('white', "skyblue", 'red'),
-                            values = c(0, -1, 1)) +
+      scale_color_gradientn(
+        colors = c("red", "#FFFFE4", "blue"), 
+        limits = c(-7, 7)
+      ) +
       geom_smooth(method = "lm", se = FALSE) +
       labs(
         x = paste("Percentage of Families", input$income),
