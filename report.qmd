@@ -117,13 +117,11 @@ The American Community Survey (ACS) is a randomly distributed survey to househol
 
 ## Methodology
 
-The first step required was to determine what datasets I needed to collect and perform any necessary data cleaning or preparation. The ACS datasets in particular were challenging to work with since they did not have a consistent format pattern and contained difficult to read variable names. Once that preliminary cleaning was completed, the ACS datasets were joined into the EOP dataset by school district name to create a large cumulative dataset.
+The first step required was to determine what datasets I needed to collect and perform any necessary data cleaning or preparation. The ACS datasets in particular were challenging to work with since they did not have a consistent format pattern and contained difficult to read variable names. Once that preliminary cleaning was completed, the ACS datasets were joined into the EOP dataset by school district name to create a large cumulative dataset. Additionally, I had to pivot longer several fields in order to build interactive elements on my map that relied upon field condensation.
 
-My initial goal was to create a geospatial visualization where school districts across the US could be represented as points and be interacted with to gleam more information. I experimented with various R packages like the maps [@maps], usmap [@usmap], and sf [@sf] packages to determine which had the capabilities, customization, and functionality I was looking for. The deliberation between these options was very difficult as I would learn and discover new things about each one as I experimented more. However, after much deliberation I concluded that a map should not be my ultimate goal for the project due to restrictions on the geographic spread of my datasets. The academic performance dataset for instance, only represented \_\_\_ school districts across \_\_\_ states which would have not translated well on a map. Additionally, the computer/internet use dataset was distributed by county instead of school district, which made it much more difficult to justify trying to use a map.
+My initial goal was to create a geospatial visualization where school districts across the US could be represented as points and be interacted with to gleam more information. I experimented with various R packages like the maps [@maps], usmap [@usmap], and sf [@sf] packages to determine which had the capabilities, customization, and functionality I was looking for. After experimenting with these maps packages, I began to notice flaws in trying to create this visualization as a central piece of my project. In particular, the housing/income ACS dataset only represented 719 school districts across 34 states which would have not translated well on a map. Additionally, the CPS supplement was distributed by county instead of school district, which made it much more difficult to justify trying to use a map since it couldn't be joined with the EOP data without losing location specificity. As such, I concluded that a map should not be my ultimate goal for the project due to restrictions on the geographic spread of my datasets and that I should instead expand on the scatterplots featured on the EOP website.
 
-I used R Shiny to create interactive properties for my plots, flesh out the functionality, and make additions to my dashboard to make it stand out more compared its inspiration. I added features to better help identify trends like fixed plot scaling, lines of best fit, and a more distinct color gradient. I also wanted to explore more variables and factors that could explain academic performance and specifically discrepancies between math and reading scores.
-
-I also wanted to include a differentiation by year to indicate the effect of the pandemic.
+I used R Shiny to create interactive properties for my plots, flesh out the functionality, and make additions to my dashboard to make it stand out more compared its inspiration. I added features to better help identify trends like fixed plot scaling, lines of best fit, and a more distinct color gradient. I also wanted to explore more variables and factors that could explain academic performance and specifically discrepancies between math and reading scores. A filter by year was also added to visualize the effect of the pandemic.
 
 ## Results
 
@@ -173,26 +171,4 @@ I am genuinely really happy with the work I have put in and with the final produ
 
 I think that I spent too much time working with the computer/internet use dataset before realizing its incompatibility with the primary dataset I was working with and in particular not recognizing the limitations of geospatial mapping sooner. I wish that I had started working with the American Community Survey dataset much earlier in the project as I could have been developing the scatter plots much earlier on which would have greatly assisted in app development.
 
-Overall, I recognize that my process and evaluation could be improved greatly but I am nonetheless very proud of my work. (future work)
-
-Questions
-
--   How much should I write about the research I did before coding?
-
-    -   Reading various articles about academic recovery post-pandemic
-
-    -   Reading articles about factors that relate to better/worse recovery (COVID statistics, socioecnomic, etc.)
-
-    -   Discovering the primary sources of information and data (ie: Educational Opportunity Project & American Community Survey)
-
-    -   Looking into other sources for academic performance data (NCES)
-
-    -   The visit with the librarian for statistical science
-
--   How in depth should I write about the data-prep/cleaning?
-
-    -   Ex: For the American Community Survey data, I had to transpose the dataset and shift a column down such that it aligned with the estimated values . . .
-
-    -   Ex: In order to add functionality of dividing by year/subject, I had to pivot wider the academic peformance dataset
-
--   Should I mention the extensive work I did with the computer/internet use Census Supplement Data? (even though it isn't relevant or included in the final product)
+Overall, I recognize that my process and evaluation could be improved greatly but I am nonetheless very proud of my work. To continue with this project, I would want to expand on the district-level variables to further research discrepancies between math and reading performance.
