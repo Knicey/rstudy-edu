@@ -11,9 +11,13 @@ bibliography: references.bib
 
 -   Project Report
 
+    -   Introduction/Motivation
+
     -   Summarizing reading and research
 
     -   Lit review/background
+
+        -   Focus more on the material that is relevant to the current product.
 
     -   Dataset descriptions
 
@@ -25,9 +29,21 @@ bibliography: references.bib
 
     -   Methodology
 
+        -   Ultimate goal is to create one cumulative dataset
+
+            -   Joined datasets based on school district names
+
+            -   This required cleaning the names . . .
+
         -   Data prep + Data cleaning
 
+            -   Explain very generally the steps I took not the details
+
+            -   Nicer version of code comments
+
         -   Consideration for district converage
+
+        -   App construction
 
     -   Results
 
@@ -55,33 +71,57 @@ bibliography: references.bib
 
 I used the [@shiny] package to create the interactive dashboard and tidyverse [@tidyverse] package for plotting, modeling, and displaying. I referenced several articles and used the academic performance data.
 
-## Reading/Research/Background
+## Introduction
 
 The Covid-19 pandemic has had a profound effect on schools in the US. For many students, the transformation from live personal engagement to remote learning or worse, schools shutting down, has been difficult to adjust to. This struggle is evident when comparing academic performance metrics pre-pandemic to post-pandemic.
 
-The primary research questions I wanted to answer were:
+My project aims to explore these primary questions:
 
 -   What are the factors that influence the academic performance of school districts?
 
--   What factors cause discrepancies between math and reading academic performance per school district?
+-   What factors are associated with discrepancies between math and reading academic performance per school district?
 
-I first wanted to search for current research and publicly available data. Throughout many articles and reports, I found many references to the Educational Opportunity Project by Stanford University for academic performance data. Additionally, I found a Census supplement dataset that provided information about Internet/Computer usage. I also found many datasets from the American Community Survey that covered topics such as population demographics, socioeconomic variables, and child population statistics.
+Research on the pandemic effect on education has largely demonstrated that lower-income areas are heavily associated with lower academic performance and greater learning loss. The Educational Opportunity Project (EOP) by Stanford University measured the change in test scores between Spring 2019 to Spring 2022 as well as Spring 2022 to Spring 2023 along with comparing by district poverty rates [@fahle2024]. Researchers have also found greater extent of remote learning was a strong indicator for increased learning loss but were not able to identify further strongly related factors. [@fahle2023]. Additionally, there is not extensive research on discrepancies between math and reading scores when it comes to performance as well as recovery. As such, this is one of the knowledge gaps that this project seeks to resolve.
 
-From the Educational Opportunity project, I was able to get extensive academic performance data across thousands of school districts. From the Census supplement, I was able to get data on internet and device usage behvaior. And from the American Community Survey, I was able to examine a lot of demographic and socioecnomic factors.
+For this project, the academic performance data by school district was from the EOP. Additionally, the 2021 Census supplement on Internet/Computer usage was examined as a potential influence on academic performance and association with discrepancy. This project also used many datasets from the American Community Survey that covered population demographics, socioeconomic variables, child population statistics, and more.
 
-The Eductional Opportunity project calculates their academic performance scale based off a 2019 national standard that is standardized across all school districts. The grade year standard (GYS) dataset specifically indicates each unit represents a full grade level of proficiency.
+Using this data, I created an interactive shiny dashboard to visualize the factors that could be associated with academic performance and search for potential factors related to math vs reading score discrepancies.
 
-The Census supplement was of particular interest because I had a hypothesis that internet/technology usage could one of the primary factors that would differentiate performance in math and reading. As such, I was hoping to compare academic performance and technology usage across matching geographical areas.
+## Background
 
-The American Community Survey data provides aggregate statistics and margin of errors across numerous variables [per school district](https://data.census.gov/all?g=010XX00US$9700000&y=2021). This is the dataset that I ended up relying on to draw comparisons across school districts and academic performance. This dataset was challenging to work with and required a lot of data preparation and cleaning to be machine readable.
+### New York Times
+
+There have been many articles published by the New York Times discuss data on academic performance over time, across school districts, and compared to numerous socioeconomic factors. [@kane2023] summarizes the findings from the EOP along with other papers and found an association between lower test scores and areas that were poorer, had lower voting rates, had lower institutional trust, and longer school closures. [@mervosh2024] aggregates data from various sources to compare percentage remote/hybrid, family income, and school closure with academic performance.
+
+The trend of discussion appears to have also changed following the end of 2023, in particular, more articles are being published are post-pandemic recovery and strategies that have aided in this process. [@miller2024] synthesized data from the EOP to visualize learning loss recovery across states and note the solutions and strategies that are being employed.
+
+### Education Reporting
+
+The National Center for Education Statistics issues the biyearly National Assessment of Educational Progress (NAEP) in math, reading, writing, and science to analyze academic performance of students in the US [@national]. This organization also developed specially weighted scales to compare the data across grades.
+
+The EOP uses state-administered exams in math and reading across students from grades 3-8 across thousands of school districts over the course of several years [@fahle2024a]. This project also linked these test scores to the NAEP scale for comparability.
+
+I drew heavy inspiration by the plots on the website of the [Educational Opportunity website](https://edopportunity.org/recovery/#/chart/none/districts/mth2223/frl/all/3.15/37.39/-96.78/) where they compared math/reading scores with different socioeconomic factors in a nice comprehensible scatter plot. I noted how effective this method was at mitigating the geographic spread issue so I adapted and extended this idea with my Shiny dashboard. Their dashboard offers filters and divisions by subgroup, subject, and year, but I wanted to extensively look into variables that could be compared to academic performance.
+
+### Government Reporting
+
+The American Community Survey offers a diverse range of population characteristics on a school district level basis and as a result became my primary data source for interesting factors. This is also the source of the socioeconomic data used by the EOP.
+
+## Data
+
+The Eductional Opportunity Project was developed by researchers at Stanford University to study disparities in academic performance across school districts. This project uses state-administered standardized tests across grade 3-8 students in both math and reading with the primary years of interest being 2019, 2022, and 2023. The scores are scaled based off a 2019 national standard that is standardized across all school districts. The grade year standard (GYS) dataset specifically indicates each unit represents a full grade level of proficiency and is comparable across years.
+
+The Current Population Survey (CPS) is a national monthly survey designed to get information about labor statistics in the US. The 2021 CPS Computer/Internet Use supplement was of particular interest because I had a hypothesis that internet/technology usage could one of the primary factors that would differentiate performance in math and reading. As such, I was hoping to compare academic performance and technology usage across matching geographical areas. This did not end up in the final deliverable due to incompatible geographic matching with the academic performance dataset.
+
+The American Community Survey (ACS) is a randomly distributed survey to household owners to collect housing and population statistics. Altogether, the ACS datasets contained aggregate statistics across hundreds of variables [per school district](https://data.census.gov/all?g=010XX00US$9700000&y=2021). The ACS became my primary source for school district data in order to draw comparisons across school districts and academic performance. Many of the datasets were challenging to work with and required a lot of data preparation and cleaning to be machine readable. I ended up using ACS datasets that covered topics in housing, economics, and demographics.
 
 ## Methodology
 
-My initial goal was to create a map where school districts across the US could be represented as points and be interacted with to gleam more information. I experimented with various R packages like the maps [@maps], usmap [@usmap], and sf [@sf] packages to determine which had the capabilities, customization, and functionality I was looking for. The deliberation between these options was very difficult as I would learn and discover new things about each one as I experimented more. However, after much deliberation I concluded that a map should not be my ultimate goal for the project due to restrictions on the geographic spread of my datasets. The academic performance dataset for instance, only represented \_\_\_ school districts across \_\_\_ states which would have not translated well on a map. Additionally, the computer/internet use dataset was distributed by county instead of school district, which made it much more difficult to justify trying to use a map.
+The first step required was to determine what datasets I needed to collect and perform any necessary data cleaning or preparation. The ACS datasets in particular were challenging to work with since they did not have a consistent format pattern and contained difficult to read variable names. Once that preliminary cleaning was completed, the ACS datasets were joined into the EOP dataset by school district name to create a large cumulative dataset.
 
-I drew heavy inspiration by the plots on the website of the [Educational Opportunity website](https://edopportunity.org/recovery/#/chart/none/districts/mth2223/frl/all/3.15/37.39/-96.78/) where they compared math/reading scores with different socioeconomic factors in a nice comprehensible scatter plot. I noted how effective this method was at mitigating the geographic spread issue so I adapted and extended this idea with my Shiny dashboard. Their dashboard offers filters and divisions by subgroup, subject, and year, but I wanted to extensively look into variables that could be compared to academic performance. The American Community Survey offers a diverse range of population characteristics on a school district level basis and as a result became my primary data source for interesting factors. This is also the source of the socioeconomic data on the Educational Opportunity's plots.
+My initial goal was to create a geospatial visualization where school districts across the US could be represented as points and be interacted with to gleam more information. I experimented with various R packages like the maps [@maps], usmap [@usmap], and sf [@sf] packages to determine which had the capabilities, customization, and functionality I was looking for. The deliberation between these options was very difficult as I would learn and discover new things about each one as I experimented more. However, after much deliberation I concluded that a map should not be my ultimate goal for the project due to restrictions on the geographic spread of my datasets. The academic performance dataset for instance, only represented \_\_\_ school districts across \_\_\_ states which would have not translated well on a map. Additionally, the computer/internet use dataset was distributed by county instead of school district, which made it much more difficult to justify trying to use a map.
 
-Once I created my first few interactive properties for my plots, fleshing out the functionality was not too challenging and I was able to make more additions to my dashboard to make it stand out more compared its inspiration. I added features to better help identify trends like fixed plot scaling, lines of best fit, and a more distinct color gradient. I also wanted to explore more variables and factors that could explain academic performance and specifically discrepancies between math and reading scores.
+I used R Shiny to create interactive properties for my plots, flesh out the functionality, and make additions to my dashboard to make it stand out more compared its inspiration. I added features to better help identify trends like fixed plot scaling, lines of best fit, and a more distinct color gradient. I also wanted to explore more variables and factors that could explain academic performance and specifically discrepancies between math and reading scores.
 
 I also wanted to include a differentiation by year to indicate the effect of the pandemic.
 
@@ -89,7 +129,11 @@ I also wanted to include a differentiation by year to indicate the effect of the
 
 The dashboard I created offers filters and divisions similar to the existing dashboard, but I analyzed a greater number of socioeconomic and demographic factors that could affect academic performance. From plotting socioeconomic factors, it was clear that indicators of areas being lower-income or lower-earning tended to be associated with lower academic performance in both math and reading.
 
+(figures/screenshots showing the plots)
+
 I also made a plot of math vs reading scores and it demonstrated that performance in one subject was indicative of performance in the other across school districts.
+
+(more details on what you can learn from this app)
 
 ## Discussion/Conclusion
 
@@ -97,7 +141,31 @@ My original research questions cannot be conclusively answered from the work of 
 
 Comparing pre-pandemic to post-pandemic . . .
 
+My conclusions matches the findings of other projects . . .
+
+My app in particular looked into the difference between reading and math performance as an interactive tool. Explain what my app does more/how it expands on previous work.
+
+Comparison to the existing dashboard, demonstrate understanding of previous work.
+
 To take this project further, I would like to continue exploring different factors and variables per school district to draw more insights into what seems to affect academic performance. I would also like to include more interactivity with the scatterplot itself to aid in engagement. Additionally, I would also want to look into more COVID-related school district statistics to better demonstrate the effect of the pandemic on academic performance.
+
+## Appendix
+
+Data Dictionary:
+
+## Timeline:
+
+Send new draft Wednesday morning or earlier
+
+Final Deliverables (email Prof Tackett then email DUS after confirmation)
+
+-   The final report
+
+-   The code repository
+
+-   The cumulative dataset
+
+## 
 
 ## Reflection (not part of report)
 
@@ -105,7 +173,7 @@ I am genuinely really happy with the work I have put in and with the final produ
 
 I think that I spent too much time working with the computer/internet use dataset before realizing its incompatibility with the primary dataset I was working with and in particular not recognizing the limitations of geospatial mapping sooner. I wish that I had started working with the American Community Survey dataset much earlier in the project as I could have been developing the scatter plots much earlier on which would have greatly assisted in app development.
 
-Overall, I recognize that my process and evaluation could be improved greatly but I am nonetheless very proud of my work.
+Overall, I recognize that my process and evaluation could be improved greatly but I am nonetheless very proud of my work. (future work)
 
 Questions
 
