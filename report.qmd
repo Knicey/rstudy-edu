@@ -7,70 +7,6 @@ editor_options:
 bibliography: references.bib
 ---
 
-## Outline
-
--   Project Report
-
-    -   Introduction/Motivation
-
-    -   Summarizing reading and research
-
-    -   Lit review/background
-
-        -   Focus more on the material that is relevant to the current product.
-
-    -   Dataset descriptions
-
-        -   Academic performance data
-
-            -   Explain their grade calculation
-
-        -   ACS Data
-
-    -   Methodology
-
-        -   Ultimate goal is to create one cumulative dataset
-
-            -   Joined datasets based on school district names
-
-            -   This required cleaning the names . . .
-
-        -   Data prep + Data cleaning
-
-            -   Explain very generally the steps I took not the details
-
-            -   Nicer version of code comments
-
-        -   Consideration for district converage
-
-        -   App construction
-
-    -   Results
-
-        -   Description of the app
-
-        -   Takeaways + Conclusions
-
-    -   Discussion/Conclusion
-
-        -   Overall takeways answering the research question
-
-            -   The state of education post-pandemic
-
-        -   LImitations of my analysis/research
-
-        -   Future research steps
-
--   Reflection on the project and experience
-
--   Citing code/libraries
-
-    -   Only big ones like tidyverse and shiny
-
-### References Test
-
-I used the [@shiny] package to create the interactive dashboard and tidyverse [@tidyverse] package for plotting, modeling, and displaying. I referenced several articles and used the academic performance data.
-
 ## Introduction
 
 The Covid-19 pandemic has had a profound effect on schools in the US. For many students, the transformation from live personal engagement to remote learning or worse, schools shutting down, has been difficult to adjust to. This struggle is evident when comparing academic performance metrics pre-pandemic to post-pandemic.
@@ -155,24 +91,13 @@ To take my project further, I would like to continue exploring different factors
 
 Data Dictionary:
 
-## Timeline:
+| Variable Name   | Description                                   |
+|-----------------|-----------------------------------------------|
+| state           | The state abbreviation of the School District |
+| school_district | The name of the School District               |
+| subgroup        | The racial/economic subgroup                  |
+| year            | The year of the data                          |
+| Mathematics     | The mathematics score                         |
+| Reading         | The reading score                             |
 
-Send new draft Wednesday morning or earlier
-
-Final Deliverables (email Prof Tackett then email DUS after confirmation)
-
--   The final report
-
--   The code repository
-
--   The cumulative dataset
-
-## 
-
-## Reflection (not part of report)
-
-I am genuinely really happy with the work I have put in and with the final product that I have developed and will continue to maintain. I am very grateful to Professor Tackett for talking with me throughout the semester and being an incredible mentor for my project.
-
-I think that I spent too much time working with the computer/internet use dataset before realizing its incompatibility with the primary dataset I was working with and in particular not recognizing the limitations of geospatial mapping sooner. I wish that I had started working with the American Community Survey dataset much earlier in the project as I could have been developing the scatter plots much earlier on which would have greatly assisted in app development.
-
-Overall, I recognize that my process and evaluation could be improved greatly but I am nonetheless very proud of my work. To continue with this project, I would want to expand on the district-level variables to further research discrepancies between math and reading performance.
+## References

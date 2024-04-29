@@ -1,0 +1,77 @@
+---
+title: "Project Planning"
+format: pdf
+editor: visual
+---
+
+## Timeline:
+
+Send new draft Wednesday morning or earlier
+
+Final Deliverables (email Prof Tackett then email DUS after confirmation)
+
+-   The final report
+
+-   The code repository
+
+-   The cumulative dataset
+
+## Outline
+
+-   Project Report
+
+    -   Introduction/Motivation
+
+    -   Summarizing reading and research
+
+    -   Lit review/background
+
+        -   Focus more on the material that is relevant to the current product.
+
+    -   Dataset descriptions
+
+        -   Academic performance data
+
+            -   Explain their grade calculation
+
+        -   ACS Data
+
+    -   Methodology
+
+        -   Ultimate goal is to create one cumulative dataset
+
+            -   Joined datasets based on school district names
+
+            -   This required cleaning the names . . .
+
+        -   Data prep + Data cleaning
+
+            -   Explain very generally the steps I took not the details
+
+            -   Nicer version of code comments
+
+        -   Consideration for district converage
+
+        -   App construction
+
+    -   Results
+
+        -   Description of the app
+
+        -   Takeaways + Conclusions
+
+    -   Discussion/Conclusion
+
+        -   Overall takeways answering the research question
+
+            -   The state of education post-pandemic
+
+        -   LImitations of my analysis/research
+
+        -   Future research steps
+
+-   Reflection on the project and experience
+
+-   Citing code/libraries
+
+    -   Only big ones like tidyverse and shiny

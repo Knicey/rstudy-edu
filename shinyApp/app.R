@@ -26,6 +26,16 @@ test_selected_years <- test_admindist_gys |>
     gys_mn_2019_ol, gys_mn_2022_ol, gys_mn_2023_ol
   ) |>
   mutate(
+    subgroup = case_match(
+      subgroup,
+      "all" ~ "All Students",
+      "ecd" ~ "Economically Disadvantaged",
+      "blk" ~ "Black",
+      "wht" ~ "White",
+      "hsp" ~ "Hispanic",
+      "nec" ~ "Non-Economically Disadvantaged",
+    ),
+    
     subject = case_match(
       subject,
       "mth" ~ "Mathematics",
@@ -163,8 +173,7 @@ ui <- page_navbar(
       options = list(plugins = "remove_button")
     ),
     
-    "Academic performance data comes from the Educational Opportunity Project at Stanford University.
-    Socioeconomic data is from the 2021 American Community Survey."
+    "All scores are calculated as a grade level difference from the 2019 national average in the US"
   ),
   header = uiOutput("selected_subgroup"),
   nav_spacer(),
@@ -185,13 +194,24 @@ ui <- page_navbar(
   nav_panel(
     title = "Data",
     card(card_body(DT::dataTableOutput(outputId = "data"))),
-    #downloadButton("downloadFilteredData", "Download Filtered Data"),
     downloadButton("downloadAllData", "Download All Data")
     
   ),
-  footer = "Showing only results for school districts in the US.
-  All scores are calculated as a grade level difference from the 2019 national average."
   
+  nav_panel(
+    title = "About",
+    card(
+      card_body(
+        h3("About This Project"),
+        p("This app allows you to explore the relationship between academic performance and socioeconomic factors in US school districts."),
+        p("Use the sidebar to select a subgroup, year, subject, and economic variable. The app will display a scatter plot of reading vs math scores and a scatter plot of test scores vs the selected economic variable."),
+        p("The data comes from the Educational Opportunity Project at Stanford University and the 2021 American Community Survey.")
+      )
+    )
+  ),
+  
+  #footer = paste("Showing only results for school districts in the US.", "There are", textOutput(outputId = "num_schools"), "school districts in the dataset.")
+  footer = textOutput(outputId = "num_schools")
 )
 
 # Define server function -------------------------------------------------------
@@ -215,6 +235,14 @@ server <- function(input, output, session) {
       )
   })
   
+  output$num_schools <- renderText({
+    paste(
+      "Showing",
+      length(unique(acs_income_joined_filtered()$school_district)), 
+      "school districts in the US."
+      )
+  })
+  
   # Plot of reading vs math scores
   output$reading_vs_math_plot <- renderPlot({
     test_wider_filtered() |>
@@ -233,7 +261,7 @@ server <- function(input, output, session) {
         x = "Math Scores",
         y = "Reading Scores",
         title = paste("Reading vs Math Performance in", input$year),
-        subtitle = paste("Among", input$subgroup, "students"),
+        subtitle = paste("Among", input$subgroup, "Students"),
         color = "Change in Score"
       ) +
       theme_minimal() +
@@ -294,7 +322,7 @@ server <- function(input, output, session) {
     }
   )
   
-  output$downloadFilteredData <- downloadHandler(
+  output$downloadAllData <- downloadHandler(
     filename = function() {
       # Use the selected dataset as the suggested file name
       paste0("data-", Sys.Date(), ".csv", sep = "")
