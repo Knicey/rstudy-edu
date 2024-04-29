@@ -127,7 +127,7 @@ I used R Shiny to create interactive properties for my plots, flesh out the func
 
 The dashboard I created offers filters and divisions similar to the existing dashboard, but I analyzed a greater number of socioeconomic and demographic factors that could affect academic performance. From plotting socioeconomic factors, it was clear that indicators of areas being lower-income or lower-earning tended to be associated with lower academic performance in both math and reading.
 
-(figures/screenshots showing the plots)
+![](images/clipboard-331048206.png)
 
 I also made a plot of math vs reading scores and it demonstrated that performance in one subject was indicative of performance in the other across school districts.
 

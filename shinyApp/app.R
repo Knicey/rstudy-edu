@@ -24,7 +24,15 @@ test_selected_years <- test_admindist_gys |>
   select(
     sedaadmin, sedaadminname, stateabb, subject, subgroup, 
     gys_mn_2019_ol, gys_mn_2022_ol, gys_mn_2023_ol
-  ) 
+  ) |>
+  mutate(
+    subject = case_match(
+      subject,
+      "mth" ~ "Mathematics",
+      "rla" ~ "Reading"
+    )
+  )
+
 
 test_longer <- test_selected_years |>
   pivot_longer(
@@ -36,20 +44,20 @@ test_longer <- test_selected_years |>
     year = str_sub(year, -7, -4)
   )
 
-test_wider <- test_selected_years |>
+test_wider <- test_longer |>
   pivot_wider(
     names_from = subject,
-    values_from = c(gys_mn_2019_ol, gys_mn_2022_ol, gys_mn_2023_ol)
-  )
+    values_from = score
+  ) 
 
 #Cleaned Dataset for Income ----------------------------------------------------
 acs_income_2021 <- read_csv('data/acs_income_2021.csv') 
 
-acs_income_2021_narrow <- acs_income_2021 |>
+acs_income_2021_cleaned <- acs_income_2021 |>
   rename(
     ssi_percent = household_income_all_households_with_social_security_income,
     wages_salary = household_income_all_households_with_earnings_with_wages_or_salary_income,
-    public_assistance = household_income_all_households_with_cash_public_assistance_income_or_food_stamps_snap,
+    #public_assistance = household_income_all_households_with_cash_public_assistance_income_or_food_stamps_snap,
     retirement = household_income_all_households_with_retirement_income,
   ) |>
   select_if(~ (is.character(.x))) |>
@@ -59,18 +67,30 @@ acs_income_2021_narrow <- acs_income_2021 |>
 #acs_child_2021 <- read_csv('data/acs_child_characteristics_2021.csv', skip = 1)
 #Lacks Porportional Data, may not use
 
-
-
 #Turn all percentages to numeric ---------------------------------------------
-acs_income_2021_narrow[,-(1:2)] <- apply(acs_income_2021_narrow[, -(1:2)],2, function(x){
+acs_income_2021_cleaned[,-(1:2)] <- apply(acs_income_2021_cleaned[, -(1:2)],2, function(x){
   as.numeric(sub("%", "", x, fixed=TRUE))/100})
 
 #Join income and test data ---------------------------------------------------
-acs_income_2021_joined <- acs_income_2021_narrow |>
+acs_income_2021_joined <- acs_income_2021_cleaned |>
   left_join(
-    test_longer,
+    test_wider,
     by = join_by(school_district == sedaadminname, state == stateabb)
+  ) |>
+  select(
+    state, 
+    school_district, 
+    subgroup, 
+    year, 
+    Mathematics, 
+    Reading, 
+    "Percentage of Families Receiving Social Security Income" = ssi_percent, 
+    "Percentage of Families with Earnings from Salaries" = wages_salary, 
+    #"Percentage of Families with Public Assistance Income or Food Stamps" = public_assistance, 
+    "Percentage of Families with Retirement Income" = retirement
   )
+
+acs_income_2021_joined[7:ncol(acs_income_2021_joined)]
 
 
 # Find all choices ----------------------------------------------------------
@@ -85,20 +105,13 @@ subject_choices <- test_selected_years |>
   arrange(subject) |>
   pull(subject)
 
-income_choices <- acs_income_2021_narrow |>
-  select(
-    ssi_percent,
-    wages_salary,
-    public_assistance,
-    retirement
-  )  |>
+income_choices <- acs_income_2021_joined[7:ncol(acs_income_2021_joined)] |>
   colnames()
 
-#Take out year 2019 (this is the basis of comparison) ------------------------
+#Calculate the year choices --------------------------------------------------
 year_choices <- test_longer |>
   distinct(year) |>
   arrange(year) |>
-  filter(year != "2019") |>
   pull(year)
 
 # Select default values -----------------------------------------------------
@@ -150,7 +163,8 @@ ui <- page_navbar(
       options = list(plugins = "remove_button")
     ),
     
-    "Data comes from the Educational Opportunity Project at Stanford University."
+    "Academic performance data comes from the Educational Opportunity Project at Stanford University.
+    Socioeconomic data is from the 2021 American Community Survey."
   ),
   header = uiOutput("selected_subgroup"),
   nav_spacer(),
@@ -164,7 +178,7 @@ ui <- page_navbar(
   nav_panel(
     title = "Academic Peformance by Economic Variable",
     card(
-      card_body(plotOutput(outputId = "ecnomic_vs_score_plot"))
+      card_body(plotOutput(outputId = "economic_vs_score_plot"))
     )
   ),
 
@@ -172,7 +186,8 @@ ui <- page_navbar(
     title = "Data",
     card(card_body(DT::dataTableOutput(outputId = "data")))
   ),
-  footer = "Showing only results for school districts in the US."
+  footer = "Showing only results for school districts in the US.
+  All scores are calculated as a grade level difference from the 2019 national average."
   
 )
 
@@ -183,14 +198,16 @@ server <- function(input, output, session) {
   # Filter data for selected subgroup
   test_wider_filtered <- reactive({
     test_wider |>
-      filter(subgroup == input$subgroup)
+      filter(
+        subgroup == input$subgroup,
+        year == input$year
+        )
   })
   
   acs_income_joined_filtered <- reactive({
     acs_income_2021_joined |>
       filter(
-        subgroup == input$subgroup, 
-        subject == input$subject, 
+        subgroup == input$subgroup,
         year == input$year
       )
   })
@@ -198,8 +215,8 @@ server <- function(input, output, session) {
   # Plot of reading vs math scores
   output$reading_vs_math_plot <- renderPlot({
     test_wider_filtered() |>
-      ggplot(aes(x = gys_mn_2023_ol_mth, y = gys_mn_2023_ol_rla)) +
-      geom_point(aes(color = gys_mn_2023_ol_rla)) +
+      ggplot(aes(x = Mathematics, y = Reading)) +
+      geom_point(aes(color = Reading)) +
       #scale_color_gradientn(
       #  colors = c('white', "skyblue", 'red'),
       #  values = c(0, -1, 1)
@@ -212,7 +229,9 @@ server <- function(input, output, session) {
       labs(
         x = "Math Scores",
         y = "Reading Scores",
-        title = "Change in Reading vs Math Performance from 2019 to 2023"
+        title = paste("Reading vs Math Performance in", input$year),
+        subtitle = paste("Among", input$subgroup, "students"),
+        color = "Change in Score"
       ) +
       theme_minimal() +
       theme(
@@ -225,10 +244,10 @@ server <- function(input, output, session) {
   })
   
   # Plot of test scores vs economic variable
-  output$ecnomic_vs_score_plot <- renderPlot({
+  output$economic_vs_score_plot <- renderPlot({
     acs_income_joined_filtered() |>
-      ggplot(aes(x = get(input$income), y = score)) +
-      geom_point(aes(color = score)) +
+      ggplot(aes(x = get(input$income), y = get(input$subject))) +
+      geom_point(aes(color = get(input$subject))) +
       scale_color_gradientn(
         colors = c("red", "#FFFFE4", "blue"), 
         limits = c(-7, 7)
@@ -238,14 +257,14 @@ server <- function(input, output, session) {
         x = paste("Percentage of Families", input$income),
         y = paste(input$subject , "Scores"),
         title = paste(
-          "Change in", 
           input$subject,
-          "Performance from 2019 to", 
+          "Performance in", 
           input$year, 
           "vs",
           input$income
           ),
-        subtitle = paste("Among", input$subgroup, "students")
+        subtitle = paste("Among", input$subgroup, "students"),
+        color = "Change in Score"
       ) +
       theme_minimal() +
       theme(
