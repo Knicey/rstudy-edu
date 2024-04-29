@@ -127,25 +127,29 @@ I used R Shiny to create interactive properties for my plots, flesh out the func
 
 The dashboard I created offers filters and divisions similar to the existing dashboard, but I analyzed a greater number of socioeconomic and demographic factors that could affect academic performance. From plotting socioeconomic factors, it was clear that indicators of areas being lower-income or lower-earning tended to be associated with lower academic performance in both math and reading.
 
+![](images/clipboard-3938012757.png)
+
 ![](images/clipboard-331048206.png)
 
-I also made a plot of math vs reading scores and it demonstrated that performance in one subject was indicative of performance in the other across school districts.
+These two plots examine percentage of families with salary earnings compared to math and reading academic performance in 2022. The line of best fit indicates a slightly positive relationship between greater percentage of earnings and increased performance.
 
-(more details on what you can learn from this app)
+![](images/clipboard-4164762680.png)
+
+This plot looks at math vs reading scores in 2023 and demonstrates that performance in one subject was indicative of performance in the other across school districts.
+
+Furthermore, this app allows distinguishing between different student subgroups: All, White, Black, Hispanic, and Economically Disadvantaged. However, not all school districts have data specific per subgroup. Additionally from comparing any plots from 2022 to 2023, the recovery effect is very noticeable. Similarly, changing any plot from 2019 to 2021 results in notable decrease in overall performance.
 
 ## Discussion/Conclusion
 
 My original research questions cannot be conclusively answered from the work of this project. I was able to discover and confirm the findings of many other researchers that lower-income/poorer school districts generally had worse academic performance than high-income/wealthier school districts. However, I was not able to identify any socioeconomic variables that resulted in noticeable discrepancies between reading and math scores. Similarly, the plot of reading scores vs math scores showed that how school districts were performing in one subject reflected how they performed in the other. As such, it remains difficult to answer the second question.
 
-Comparing pre-pandemic to post-pandemic . . .
+Comparing academic performance in 2019 to 2022, it becomes very evident that the pandemic had a considerable negative effect on academic performance. Comparing academic performance from 2022 to 2023 shows that schools districts are largely recovering from learning loss resulting from the pandemic. Additionally, comparing 2019 to 2023 academic performance shows that the recovery has still not yet brought schools back yet to 2019 profieciency levels. My conclusions matches the findings of other projects that looked into the effect of the pandemic on academic performance and the learning loss recovery in 2023.
 
-My conclusions matches the findings of other projects . . .
+My dashboard looked into the difference between reading and math performance as an interactive tool. In particular, it expands upon the scatterplot on the EOP website with additional socioeconomic variables, fixed axis, and streamlined filtering that result in easier comparisons across years, subjects, subgroups, and district level variables.
 
-My app in particular looked into the difference between reading and math performance as an interactive tool. Explain what my app does more/how it expands on previous work.
+The existing EOP dashboard allows interactivity with each of the school districts represented as points and provides detailed information about the school district when selected. Additionally, their points are sized based on school population. While this project also uses socioecnomic data from the ACS, their plot appears to have superiopr coverage of school districts.
 
-Comparison to the existing dashboard, demonstrate understanding of previous work.
-
-To take this project further, I would like to continue exploring different factors and variables per school district to draw more insights into what seems to affect academic performance. I would also like to include more interactivity with the scatterplot itself to aid in engagement. Additionally, I would also want to look into more COVID-related school district statistics to better demonstrate the effect of the pandemic on academic performance.
+To take my project further, I would like to continue exploring different factors and variables per school district to draw more insights into what seems to affect academic performance. I would also like to include more interactivity with the scatterplot and other kinds of plots to add further engagement. Additionally, I would also want to look into more COVID-related school district statistics to better demonstrate the effect of the pandemic on academic performance.
 
 ## Appendix
 

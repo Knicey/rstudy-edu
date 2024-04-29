@@ -184,7 +184,10 @@ ui <- page_navbar(
 
   nav_panel(
     title = "Data",
-    card(card_body(DT::dataTableOutput(outputId = "data")))
+    card(card_body(DT::dataTableOutput(outputId = "data"))),
+    #downloadButton("downloadFilteredData", "Download Filtered Data"),
+    downloadButton("downloadAllData", "Download All Data")
+    
   ),
   footer = "Showing only results for school districts in the US.
   All scores are calculated as a grade level difference from the 2019 national average."
@@ -279,6 +282,29 @@ server <- function(input, output, session) {
   output$data <- DT::renderDataTable({
     acs_income_joined_filtered() 
   })
+  
+  output$downloadFilteredData <- downloadHandler(
+    filename = function() {
+      # Use the selected dataset as the suggested file name
+      paste0("data-", Sys.Date(), ".csv", sep = "")
+    },
+    content = function(file) {
+      # Write the dataset to the `file` that will be downloaded
+      write.csv(acs_income_2021_joined_filtered(), file)
+    }
+  )
+  
+  output$downloadFilteredData <- downloadHandler(
+    filename = function() {
+      # Use the selected dataset as the suggested file name
+      paste0("data-", Sys.Date(), ".csv", sep = "")
+    },
+    content = function(file) {
+      # Write the dataset to the `file` that will be downloaded
+      write.csv(acs_income_2021_joined, file)
+    }
+  )
+  
 }
 
 
