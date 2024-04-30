@@ -1,5 +1,6 @@
 ---
-title: "Project Report"
+title: "Statistics in Educational Policy"
+subtitle: "Project Report"
 format: pdf
 editor: visual
 editor_options: 
@@ -17,39 +18,39 @@ My project aims to explore these primary questions:
 
 -   What factors are associated with discrepancies between math and reading academic performance per school district?
 
-Research on the pandemic effect on education has largely demonstrated that lower-income areas are heavily associated with lower academic performance and greater learning loss. The Educational Opportunity Project (EOP) by Stanford University measured the change in test scores between Spring 2019 to Spring 2022 as well as Spring 2022 to Spring 2023 along with comparing by district poverty rates [@fahle2024]. Researchers have also found greater extent of remote learning was a strong indicator for increased learning loss but were not able to identify further strongly related factors. [@fahle2023]. Additionally, there is not extensive research on discrepancies between math and reading scores when it comes to performance as well as recovery. As such, this is one of the knowledge gaps that this project seeks to resolve.
+Research on the pandemic's effect on education has largely demonstrated that lower-income areas are heavily associated with lower academic performance and greater learning loss [@irwin]. The Educational Opportunity Project (EOP) by Stanford University measured the change in test scores between Spring 2019 to Spring 2022 as well as Spring 2022 to Spring 2023 along with comparing by district poverty rates [@fahle2024]. Researchers have also found greater extent of remote learning was a strong indicator for increased learning loss but were not able to identify further strongly related factors. [@fahle2023]. Additionally, there is not extensive research on discrepancies between math and reading scores when it comes to performance as well as recovery. As such, this is one of the knowledge gaps that this project seeks to resolve.
 
 For this project, the academic performance data by school district was from the EOP. Additionally, the 2021 Census supplement on Internet/Computer usage was examined as a potential influence on academic performance and association with discrepancy. This project also used many datasets from the American Community Survey that covered population demographics, socioeconomic variables, child population statistics, and more.
 
-Using this data, I created an interactive shiny dashboard to visualize the factors that could be associated with academic performance and search for potential factors related to math vs reading score discrepancies.
+Using this data, I created an interactive Shiny dashboard to visualize the factors that could be associated with academic performance and search for potential factors related to math vs reading score discrepancies.
 
 ## Background
 
 ### New York Times
 
-There have been many articles published by the New York Times discuss data on academic performance over time, across school districts, and compared to numerous socioeconomic factors. [@kane2023] summarizes the findings from the EOP along with other papers and found an association between lower test scores and areas that were poorer, had lower voting rates, had lower institutional trust, and longer school closures. [@mervosh2024] aggregates data from various sources to compare percentage remote/hybrid, family income, and school closure with academic performance.
+There have been many articles published by the New York Times discuss data on academic performance over time, across school districts, and compared to numerous socioeconomic factors. @kane2023 summarizes the findings from the EOP along with other papers and found an association between lower test scores and areas that were poorer, had lower voting rates, had lower institutional trust, and longer school closures. @mervosh2024 aggregates data from various sources to compare percentage remote/hybrid, family income, and school closure with academic performance.
 
-The trend of discussion appears to have also changed following the end of 2023, in particular, more articles are being published are post-pandemic recovery and strategies that have aided in this process. [@miller2024] synthesized data from the EOP to visualize learning loss recovery across states and note the solutions and strategies that are being employed.
+The trend of discussion appears to have also changed following the end of 2023, in particular, more articles are being published are post-pandemic recovery and strategies that have aided in this process. @miller2024 synthesized data from the EOP to visualize learning loss recovery across states and note the solutions and strategies that are being employed.
 
 ### Education Reporting
 
 The National Center for Education Statistics issues the biyearly National Assessment of Educational Progress (NAEP) in math, reading, writing, and science to analyze academic performance of students in the US [@national]. This organization also developed specially weighted scales to compare the data across grades.
 
-The EOP uses state-administered exams in math and reading across students from grades 3-8 across thousands of school districts over the course of several years [@fahle2024a]. This project also linked these test scores to the NAEP scale for comparability.
+The EOP uses state-administered exams in math and reading across students from grades 3-8 across thousands of school districts over the course of several years [@fahle2024]. This project also linked these test scores to the NAEP scale for comparability.
 
 I drew heavy inspiration by the plots on the website of the [Educational Opportunity website](https://edopportunity.org/recovery/#/chart/none/districts/mth2223/frl/all/3.15/37.39/-96.78/) where they compared math/reading scores with different socioeconomic factors in a nice comprehensible scatter plot. I noted how effective this method was at mitigating the geographic spread issue so I adapted and extended this idea with my Shiny dashboard. Their dashboard offers filters and divisions by subgroup, subject, and year, but I wanted to extensively look into variables that could be compared to academic performance.
 
 ### Government Reporting
 
-The American Community Survey offers a diverse range of population characteristics on a school district level basis and as a result became my primary data source for interesting factors. This is also the source of the socioeconomic data used by the EOP.
+The American Community Survey (ACS) is a yearly survey administired by the Census Bureau to random household owners to collect housing and population statistics. Altogether, the ACS datasets contain aggregate statistics across hundreds of variables and cover a diverse range of population characteristics on a school district level basis.
 
 ## Data
 
-The Eductional Opportunity Project was developed by researchers at Stanford University to study disparities in academic performance across school districts. This project uses state-administered standardized tests across grade 3-8 students in both math and reading with the primary years of interest being 2019, 2022, and 2023. The scores are scaled based off a 2019 national standard that is standardized across all school districts. The grade year standard (GYS) dataset specifically indicates each unit represents a full grade level of proficiency and is comparable across years.
+The Eductional Opportunity Project was developed by researchers at Stanford University to study disparities in academic performance across school districts. This project uses state-administered standardized tests across grade 3-8 students in both math and reading with the primary years of interest being 2019, 2022, and 2023. The values are scaled based off a 2019 national standard making scores comparable across school districts. The grade year standard (GYS) dataset specifically indicates each unit represents a full grade level of proficiency and is comparable across years.
 
 The Current Population Survey (CPS) is a national monthly survey designed to get information about labor statistics in the US. The 2021 CPS Computer/Internet Use supplement was of particular interest because I had a hypothesis that internet/technology usage could one of the primary factors that would differentiate performance in math and reading. As such, I was hoping to compare academic performance and technology usage across matching geographical areas. This did not end up in the final deliverable due to incompatible geographic matching with the academic performance dataset.
 
-The American Community Survey (ACS) is a randomly distributed survey to household owners to collect housing and population statistics. Altogether, the ACS datasets contained aggregate statistics across hundreds of variables [per school district](https://data.census.gov/all?g=010XX00US$9700000&y=2021). The ACS became my primary source for school district data in order to draw comparisons across school districts and academic performance. Many of the datasets were challenging to work with and required a lot of data preparation and cleaning to be machine readable. I ended up using ACS datasets that covered topics in housing, economics, and demographics.
+The ACS became my primary source for school district data in order to draw comparisons across school districts and academic performance. Many of the datasets were challenging to work with and required a lot of data preparation and cleaning to be machine readable. I ended up using ACS datasets that covered topics in housing, economics, and demographics.
 
 ## Methodology
 
@@ -61,15 +62,19 @@ I used R Shiny to create interactive properties for my plots, flesh out the func
 
 ## Results
 
-The dashboard I created offers filters and divisions similar to the existing dashboard, but I analyzed a greater number of socioeconomic and demographic factors that could affect academic performance. From plotting socioeconomic factors, it was clear that indicators of areas being lower-income or lower-earning tended to be associated with lower academic performance in both math and reading.
+The dashboard I created offers filters and divisions similar to the existing dashboard, but I analyzed a greater number of socioeconomic and demographic factors that could affect academic performance.
 
-![](images/clipboard-3938012757.png)
+![](images/clipboard-1075870647.png)Additionally, all the plots used a fixed y-axis scale and include a toggleable line of best fit for the purposes of better observing trends and making comparisons while changing parameters.
 
-![](images/clipboard-331048206.png)
+From plotting socioeconomic factors, it was clear that indicators of areas being lower-income or lower-earning tended to be associated with lower academic performance in both math and reading.
+
+![](images/clipboard-1903788214.png)
+
+![](images/clipboard-2828701794.png)
 
 These two plots examine percentage of families with salary earnings compared to math and reading academic performance in 2022. The line of best fit indicates a slightly positive relationship between greater percentage of earnings and increased performance.
 
-![](images/clipboard-4164762680.png)
+![](images/clipboard-753929655.png)
 
 This plot looks at math vs reading scores in 2023 and demonstrates that performance in one subject was indicative of performance in the other across school districts.
 
@@ -77,7 +82,7 @@ Furthermore, this app allows distinguishing between different student subgroups:
 
 ## Discussion/Conclusion
 
-My original research questions cannot be conclusively answered from the work of this project. I was able to discover and confirm the findings of many other researchers that lower-income/poorer school districts generally had worse academic performance than high-income/wealthier school districts. However, I was not able to identify any socioeconomic variables that resulted in noticeable discrepancies between reading and math scores. Similarly, the plot of reading scores vs math scores showed that how school districts were performing in one subject reflected how they performed in the other. As such, it remains difficult to answer the second question.
+My original research questions cannot be conclusively answered from the work of this project; however, I was able to discover and confirm the findings of many other researchers that lower-income/poorer school districts generally had worse academic performance than high-income/wealthier school districts. Additionally, I did not identify any socioeconomic variables that resulted in noticeable discrepancies between reading and math scores. Similarly, the plot of reading scores vs math scores showed that how school districts were performing in one subject reflected how they performed in the other. As such, it remains difficult to answer the second question.
 
 Comparing academic performance in 2019 to 2022, it becomes very evident that the pandemic had a considerable negative effect on academic performance. Comparing academic performance from 2022 to 2023 shows that schools districts are largely recovering from learning loss resulting from the pandemic. Additionally, comparing 2019 to 2023 academic performance shows that the recovery has still not yet brought schools back yet to 2019 profieciency levels. My conclusions matches the findings of other projects that looked into the effect of the pandemic on academic performance and the learning loss recovery in 2023.
 
