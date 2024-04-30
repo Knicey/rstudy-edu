@@ -172,6 +172,12 @@ ui <- page_navbar(
       selected = selected_income,
       options = list(plugins = "remove_button")
     ),
+    #Checkbox to disable line of best fit
+    checkboxInput(
+      inputId = "line_of_best_fit",
+      label = "Show Line of Best Fit",
+      value = TRUE
+    ),
     
     "All scores are calculated as a grade level difference from the 2019 national average in the US"
   ),
@@ -245,7 +251,7 @@ server <- function(input, output, session) {
   
   # Plot of reading vs math scores
   output$reading_vs_math_plot <- renderPlot({
-    test_wider_filtered() |>
+    plot <- test_wider_filtered() |>
       ggplot(aes(x = Mathematics, y = Reading)) +
       geom_point(aes(color = Reading)) +
       #scale_color_gradientn(
@@ -256,7 +262,6 @@ server <- function(input, output, session) {
         colors = c("red", "#FFFFE4", "blue"), 
         limits = c(-7, 7)
       ) +
-      geom_smooth(method = "lm", se = FALSE) +
       labs(
         x = "Math Scores",
         y = "Reading Scores",
@@ -272,20 +277,26 @@ server <- function(input, output, session) {
       ) +
       scale_y_continuous(limits = c(-7, 7) ) +
       scale_x_continuous(limits = c(-7, 7) )
+    
+    if (input$line_of_best_fit) {
+      plot <- plot + geom_smooth(method = "lm", se = FALSE)
+    }
+    
+    return(plot)
+    
   })
   
   # Plot of test scores vs economic variable
   output$economic_vs_score_plot <- renderPlot({
-    acs_income_joined_filtered() |>
+    plot <- acs_income_joined_filtered() |>
       ggplot(aes(x = get(input$income), y = get(input$subject))) +
       geom_point(aes(color = get(input$subject))) +
       scale_color_gradientn(
         colors = c("red", "#FFFFE4", "blue"), 
         limits = c(-7, 7)
       ) +
-      geom_smooth(method = "lm", se = FALSE) +
       labs(
-        x = paste("Percentage of Families", input$income),
+        x = paste(input$income),
         y = paste(input$subject , "Scores"),
         title = paste(
           input$subject,
@@ -304,6 +315,12 @@ server <- function(input, output, session) {
         axis.text = element_text(size = 12)
       ) +
       scale_y_continuous(limits = c(-7, 7) )
+    
+    if (input$line_of_best_fit) {
+      plot <- plot + geom_smooth(method = "lm", se = FALSE)
+    }
+    
+    return(plot)
   })
 
   
