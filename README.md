@@ -7,6 +7,7 @@ The repository is organized as follows:
 
 - `data/`: Contains the data used in the study.
 - `documenation/`: Contains the documentation for the data.
+- `Bibliography/`: Contains the annotated bibliography for the study.
 - `shinyApp/`: Contains the code for the shiny app.
 - `EDA/`: Contains the code for the exploratory data analysis.
 
@@ -15,3 +16,4 @@ The repository is organized as follows:
 the academic performance and the Current Population Survey datasets.
 
 The shiny app can be found at: https://nathany.shinyapps.io/education-statistics/
+
