@@ -1,7 +1,8 @@
 # rstudy-edu
 
 This repository contains the code and data used in the research independent study 
-on educational policy and the discrepancy between Math/Reading scores over time. 
+on examining how the pandemic has affected acaedmic performance in the US 
+and investigating discrepancies between Math/Reading scores over time.
 The repository is organized as follows:
 
 - `data/`: Contains the data used in the study.
