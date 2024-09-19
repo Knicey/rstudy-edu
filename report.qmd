@@ -1,6 +1,7 @@
 ---
 title: "Statistics in Educational Policy"
 subtitle: "Project Report"
+author: Nathan Yang
 format: pdf
 editor: visual
 editor_options: 

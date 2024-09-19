@@ -28,7 +28,7 @@ test_selected_years <- test_admindist_gys |>
   mutate(
     subgroup = case_match(
       subgroup,
-      "all" ~ "All Students",
+      "all" ~ "All",
       "ecd" ~ "Economically Disadvantaged",
       "blk" ~ "Black",
       "wht" ~ "White",
@@ -58,7 +58,10 @@ test_wider <- test_longer |>
   pivot_wider(
     names_from = subject,
     values_from = score
-  ) 
+  )  |>
+  mutate(
+    scorediff = abs(Reading - Mathematics)
+  )
 
 #Cleaned Dataset for Income ----------------------------------------------------
 acs_income_2021 <- read_csv('data/acs_income_2021.csv') 
@@ -94,6 +97,7 @@ acs_income_2021_joined <- acs_income_2021_cleaned |>
     year, 
     Mathematics, 
     Reading, 
+    scorediff,
     "Percentage of Families Receiving Social Security Income" = ssi_percent, 
     "Percentage of Families with Earnings from Salaries" = wages_salary, 
     #"Percentage of Families with Public Assistance Income or Food Stamps" = public_assistance, 
@@ -102,6 +106,35 @@ acs_income_2021_joined <- acs_income_2021_cleaned |>
 
 acs_income_2021_joined[7:ncol(acs_income_2021_joined)]
 
+#Plot of scorediff
+acs_income_2021_joined |>
+  mutate(
+    scorediffcat = case_when(
+      scorediff < 0.5 ~ "Low",
+      scorediff >= 0.5 & scorediff < 1 ~ "High",
+      scorediff >= 1 ~ "Very High"
+    )
+  ) |>
+  filter(!is.na(scorediffcat)) |>
+  ggplot(mapping = aes(x = scorediffcat)) +
+    geom_bar() +
+  geom_label(
+    aes(label = paste0(round(..count.. , 1), "%")),
+    stat = "count"
+  ) 
+
+schools <- acs_income_2021_joined |>
+  mutate(
+    scorediffcat = case_when(
+      scorediff < 0.5 ~ "Low",
+      scorediff >= 0.5 & scorediff < 1 ~ "High",
+      scorediff >= 1 ~ "Very High"
+    )
+  ) |>
+  filter(
+    !is.na(scorediffcat),
+    scorediff > 1
+    )
 
 # Find all choices ----------------------------------------------------------
 
@@ -115,7 +148,7 @@ subject_choices <- test_selected_years |>
   arrange(subject) |>
   pull(subject)
 
-income_choices <- acs_income_2021_joined[7:ncol(acs_income_2021_joined)] |>
+income_choices <- acs_income_2021_joined[8:ncol(acs_income_2021_joined)] |>
   colnames()
 
 #Calculate the year choices --------------------------------------------------
@@ -191,9 +224,16 @@ ui <- page_navbar(
   ),
   
   nav_panel(
-    title = "Academic Peformance by Economic Variable",
+    title = "Academic Peformance Analysis",
     card(
       card_body(plotOutput(outputId = "economic_vs_score_plot"))
+    )
+  ),
+  
+  nav_panel(
+    title = "Score Difference Analysis",
+    card(
+      card_body(plotOutput(outputId = "score_diff_plot"))
     )
   ),
 
@@ -304,6 +344,42 @@ server <- function(input, output, session) {
           input$year, 
           "vs",
           input$income
+          ),
+        subtitle = paste("Among", input$subgroup, "students"),
+        color = "Change in Score"
+      ) +
+      theme_minimal() +
+      theme(
+        plot.title = element_text(size = 16, face = "bold"),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 12)
+      ) +
+      scale_y_continuous(limits = c(-7, 7) )
+    
+    if (input$line_of_best_fit) {
+      plot <- plot + geom_smooth(method = "lm", se = FALSE)
+    }
+    
+    return(plot)
+  })
+  
+  #Plot for Score Difference Analysis
+  output$score_diff_plot <- renderPlot({
+    plot <- acs_income_joined_filtered() |>
+      ggplot(aes(x = get(input$income), y = scorediff)) +
+      geom_point(aes(color = get(input$subject))) +
+      scale_color_gradientn(
+        colors = c("red", "#FFFFE4", "blue"), 
+        limits = c(-7, 7)
+      ) +
+      labs(
+        x = paste(input$income),
+        y = paste("Score Difference"),
+        title = paste(
+          "Score Difference vs ", 
+          input$income,
+          "in",
+          input$year
           ),
         subtitle = paste("Among", input$subgroup, "students"),
         color = "Change in Score"

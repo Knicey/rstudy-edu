@@ -1,5 +1,6 @@
 ---
 title: "US Computer/Internet Use Census Supplement 2021"
+author: Nathan Yang
 format: pdf
 editor: visual
 editor_options: 
