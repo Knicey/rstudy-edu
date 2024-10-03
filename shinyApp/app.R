@@ -60,7 +60,7 @@ test_wider <- test_longer |>
     values_from = score
   )  |>
   mutate(
-    scorediff = abs(Reading - Mathematics)
+    scorediff = Reading - Mathematics
   )
 
 #Cleaned Dataset for Income ----------------------------------------------------
