@@ -32,9 +32,9 @@ library(stringr)
 
 Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 6)
 
-test_admindist_gys <- readr::read_csv('data/seda2023_admindist_poolsub_gys_updated_20240205.csv')
+test_admindist_gys <- readr::read_csv('data/EDOpportunity/seda2023_admindist_poolsub_gys_updated_20240205.csv')
 
-income_district <- readr::read_csv("data/ACS Data/ACSST1Y2021.S1902-2024-04-10T232130.csv")
+income_district <- readr::read_csv("data/ACS/ACSST1Y2021.S1902-2024-04-10T232130.csv")
 
 school_districts <- read_excel("data/sdlist-21.xls", skip = 2)
 ```
