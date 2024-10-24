@@ -1,0 +1,184 @@
+---
+title: "Joining School Districts"
+format: pdf
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Libraries/Packages
+
+```{r}
+#| label: load-pkg-data
+#| echo: false
+#| message: false
+#| warning: false
+library(knitr) 
+library(tidyverse)
+library(patchwork)
+library(dplyr)
+library(stringr)
+library(stringdist)
+library(readxl)
+library(haven)
+```
+
+```{r}
+#| label: load-data
+#| echo: false
+#| message: false
+
+#ACS data on child characteristics
+acs_child_characteristics <- readr::read_csv('data/ACS/acs-child-characteristics_2021.csv', skip = 1)
+
+#ACS data on poverty levels
+acs_poverty <- readr::read_csv('data/ACS/ACSST1Y2021.S1701-Data.csv', skip = 1)
+
+#ACS data on housing
+acs_housing <- readr::read_csv('data/ACS/ACSDP1Y2021.DP04-Data.csv', skip = 1)
+
+#Academic performance data from the Educational Opportunity Project
+test_admindist_gys <- readr::read_csv('data/EDOpportunity/seda2023_admindist_poolsub_gys_updated_20240205.csv')
+
+#Longitudinal School Demographic Dataset (LSDD)
+#lsdd <- read_dta('data/LSDD/LSDD_v1_beta.dta')
+
+#Common Core of Data (CCD)
+ccd_financial <- read_sas(unz("data/CCD/sdf22_1a_sas7bdat.zip", "sdf22_1a.sas7bdat"))
+
+
+#ccd <- read_csv('data/CCD/ccd_lea_029_2324_w_0a_050824.csv')
+
+```
+
+The Educational Opportunity Project Standardizes their data with the Stanford Education Data Archive (SEDA). They created their own identifier for each district, `SEDA Administrative District ID`, which details can be found here: <https://edopportunity.org/methods/>
+
+```{r}
+#| label: prepare-data-for-joining
+
+#SEDA Data
+test_mth_all_admindist_gys <- test_admindist_gys |>
+  filter(subject == 'mth' & subgroup == 'all') |>
+  rename(seda_district = sedaadminname) |>
+  #Special exception case for many school districts that ended with " SD"
+  mutate(
+    seda_district = sub(" SD", "", seda_district)
+  ) |>
+  select(sedaadmin, seda_district, stateabb, gys_mn_2022_ol)
+```
+
+```{r}
+#| label: trim-acs-datasets
+
+#Function to rename and split columns in ACS datasets since they follow a common format
+trim_acs_dataset <- function(dataset) {
+  dataset |>
+    mutate(
+      state = sub(".*,\\s", "", dataset$'Geographic Area Name'),
+      #state.abb and state.name are innate datasets in R
+      stateabb = state.abb[match(state, state.name)],
+      acs_district = sub(" School District,.*$", "", dataset$'Geographic Area Name'
+                                   ),
+    ) |>
+    select(state, stateabb, acs_district, everything())
+}
+
+#Currently child characteristics is used as a test dataset since it has the most school districts
+trim_acs_child <- trim_acs_dataset(acs_child_characteristics) |>
+  select(stateabb, acs_district)
+
+trim_acs_poverty <- trim_acs_dataset(acs_poverty) |>
+  rename(
+    poverty_percent = 'Estimate!!Percent below poverty level!!Population for whom poverty status is determined'
+    ) |>
+  select(stateabb, acs_district, poverty_percent)
+
+trim_acs_housing <- trim_acs_dataset(acs_housing) |>
+  rename(
+    occupancy_percentage = 'Percent!!HOUSING OCCUPANCY!!Total housing units!!Occupied housing units',
+    mortgage_percentage = 'Percent!!MORTGAGE STATUS!!Owner-occupied units!!Housing units with a mortgage',
+    SMOC = 'Percent!!SELECTED MONTHLY OWNER COSTS (SMOC)!!Housing units with a mortgage',
+  ) |>
+  select(stateabb, acs_district, occupancy_percentage)
+```
+
+```{r}
+#| label: trim-ccd-dataset
+
+trim_ccd_financial <- ccd_financial |>
+  rename(
+    stateabb = STABBR,
+    ccd_district = NAME,
+    membership = MEMBERSCH,
+    total_revenue = TOTALREV,
+    total_fed_revenue = TFEDREV,
+  ) |>
+  select(stateabb, ccd_district, membership, total_revenue, total_fed_revenue)
+
+```
+
+
+```{r}
+#| label: calculate-scores-and-filter
+
+#Calculate String Distance using the stringdist package
+#Also calculate Jaccard distance for 2-gram (1 - Jaccard Similarity)
+
+get_best_similarities <- function(
+    dataset1, dataset2, 
+    column1, column2, 
+    jaccard_threshold, dist_threshold
+    ) {
+  #This will assume both datasets have a stateabb column
+  #The dataset with "seda_district" is assumed to be the first dataset (the one that is grouped) for best scoring
+  similarities <- full_join(dataset1, dataset2, by = c('stateabb' = 'stateabb')) |>
+    mutate(
+      dist = stringdist::stringdist(!!sym(column1), !!sym(column2)),
+      jaccard = stringdist::stringdist(!!sym(column1), !!sym(column2), method = 'jaccard', q = 2)
+    ) |>
+    select(stateabb, !!sym(column1), !!sym(column2), dist, jaccard, everything()) |>
+    arrange(dist)
+  
+  best_similarities <- similarities |>
+    #Filters for school district names that start with the same letter
+    filter(substr(!!sym(column1), 1, 1) == substr(!!sym(column2), 1, 1)) |>
+    
+    #Filters for school district names that end with the same last three letters
+    #This is to help resolve county vs city school district names
+    #And also school district names that end in roman numerals
+    filter(str_sub(!!sym(column1), -3) == str_sub(!!sym(column2), -3)) |>
+    
+    #Filters for score thresholds
+    filter(jaccard <= jaccard_threshold) |>
+    filter(dist <= dist_threshold) |>
+    
+    #Group by state and seda district and find the minimum score as well as the minimum jaccard score
+    group_by(stateabb, !!sym(column1)) |>
+    slice_min(order_by = dist, with_ties = TRUE) |>  # Find minimum dist, allowing ties
+    slice_min(order_by = jaccard) |>                 # Break ties by selecting the minimum jaccard
+    ungroup() |>
+    arrange(jaccard)
+  
+  return(best_similarities)
+}
+
+best_sim_poverty <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_poverty, 'seda_district', 'acs_district', 0.3, 3)
+
+best_sim_housing <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_housing, 'seda_district', 'acs_district', 0.3, 3)
+
+best_sim_financial <- get_best_similarities(test_mth_all_admindist_gys, trim_ccd_financial, 'seda_district', 'ccd_district', 0.3, 3)
+
+```
+
+```{r}
+#| label: merging-best-similarity-datasets
+
+#Merge the best similarity datasets with the original datasets
+comprehensive_dataset <- test_mth_all_admindist_gys |>
+  left_join(best_sim_poverty, by = c('sedaadmin' = 'sedaadmin')) |>
+  left_join(best_sim_housing, by = c('sedaadmin' = 'sedaadmin')) |>
+  left_join(best_sim_financial, by = c('sedaadmin' = 'sedaadmin')) |>
+  select(sedaadmin, seda_district.x, poverty_percent, occupancy_percentage, total_revenue, total_fed_revenue, gys_mn_2022_ol.x)
+```
+
+
