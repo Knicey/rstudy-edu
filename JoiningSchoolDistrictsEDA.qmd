@@ -24,12 +24,15 @@ library(haven)
 ```
 
 ```{r}
-#| label: load-data
+#| label: load-school-district-data
 #| echo: false
 #| message: false
 
 #ACS data on child characteristics
-acs_child_characteristics <- readr::read_csv('data/ACS/acs-child-characteristics_2021.csv', skip = 1)
+acs_child_characteristics <- readr::read_csv(
+  'data/ACS/acs-child-characteristics_2021.csv', 
+  skip = 1
+  )
 
 #ACS data on poverty levels
 acs_poverty <- readr::read_csv('data/ACS/ACSST1Y2021.S1701-Data.csv', skip = 1)
@@ -38,23 +41,58 @@ acs_poverty <- readr::read_csv('data/ACS/ACSST1Y2021.S1701-Data.csv', skip = 1)
 acs_housing <- readr::read_csv('data/ACS/ACSDP1Y2021.DP04-Data.csv', skip = 1)
 
 #Academic performance data from the Educational Opportunity Project
-test_admindist_gys <- readr::read_csv('data/EDOpportunity/seda2023_admindist_poolsub_gys_updated_20240205.csv')
+test_admindist_gys <- readr::read_csv(
+  'data/EDOpportunity/seda2023_admindist_poolsub_gys_updated_20240205.csv'
+  )
 
 #Longitudinal School Demographic Dataset (LSDD)
 #lsdd <- read_dta('data/LSDD/LSDD_v1_beta.dta')
 
 #Common Core of Data (CCD)
-ccd_financial <- read_sas(unz("data/CCD/sdf22_1a_sas7bdat.zip", "sdf22_1a.sas7bdat"))
+ccd_financial <- read_sas(
+  unz(
+    "data/CCD/sdf22_1a_sas7bdat.zip", 
+    "sdf22_1a.sas7bdat"
+  )
+)
 
+#Census - School Districts and Associated Counties
+census_school_districts <- read_xls(
+  'data/Census - School Districts and Counties/sdlist-21.xls',
+  skip = 2
+)
 
-#ccd <- read_csv('data/CCD/ccd_lea_029_2324_w_0a_050824.csv')
+#Covid School Data Hub (CSDH)
+csdh_files <- dir(
+  path = 'data/COVIDSchoolDataHub/CSDH District Files - CSV/', 
+  pattern = '.csv', 
+  full.names = TRUE
+  )
+
+#This function is needed since some columnms are read in as different types in some CSVs but not others
+read_csv_as_character <- function(file) {
+  read_csv(file, col_types = cols(.default = "c"))
+}
+
+csdh_data <- lapply(cdsh_files, read_csv_as_character)
+csdh_data <- bind_rows(csdh_data)
+```
+
+```{r}
+#| label: load-county-data
+
+#Social Capital Project - County Level Data
+scp_county_data <- read_excel(
+  'data/SocialCapitalProject/Social Capital Project Social Capital Index Data.xlsx',
+  sheet = 'County Index',
+  skip = 2
+)
 
 ```
 
-The Educational Opportunity Project Standardizes their data with the Stanford Education Data Archive (SEDA). They created their own identifier for each district, `SEDA Administrative District ID`, which details can be found here: <https://edopportunity.org/methods/>
 
 ```{r}
-#| label: prepare-data-for-joining
+#| label: prepare-district-data-for-joining
 
 #SEDA Data
 test_mth_all_admindist_gys <- test_admindist_gys |>
@@ -90,7 +128,7 @@ trim_acs_child <- trim_acs_dataset(acs_child_characteristics) |>
 trim_acs_poverty <- trim_acs_dataset(acs_poverty) |>
   rename(
     poverty_percent = 'Estimate!!Percent below poverty level!!Population for whom poverty status is determined'
-    ) |>
+  ) |>
   select(stateabb, acs_district, poverty_percent)
 
 trim_acs_housing <- trim_acs_dataset(acs_housing) |>
@@ -99,7 +137,7 @@ trim_acs_housing <- trim_acs_dataset(acs_housing) |>
     mortgage_percentage = 'Percent!!MORTGAGE STATUS!!Owner-occupied units!!Housing units with a mortgage',
     SMOC = 'Percent!!SELECTED MONTHLY OWNER COSTS (SMOC)!!Housing units with a mortgage',
   ) |>
-  select(stateabb, acs_district, occupancy_percentage)
+  select(stateabb, acs_district, occupancy_percentage, mortgage_percentage, SMOC)
 ```
 
 ```{r}
@@ -116,6 +154,63 @@ trim_ccd_financial <- ccd_financial |>
   select(stateabb, ccd_district, membership, total_revenue, total_fed_revenue)
 
 ```
+
+```{r}
+#| label: trim-census-dataset
+
+trim_census_sdc <- census_school_districts |>
+  rename(
+    stateabb = `State Postal Code`
+  ) |>
+  select(
+    stateabb, `School District Name`, `County Names`
+  )
+```
+
+
+```{r}
+#| label: trim-csdh-dataset
+
+trim_csdh <- csdh_data |>
+  rename(
+    stateabb = StateAbbrev
+  ) |>
+  mutate(
+    TimePeriodStart = mdy(TimePeriodStart),
+    TimePeriodEnd = mdy(TimePeriodEnd),
+    EnrollmentTotal = as.numeric(EnrollmentTotal),
+    EnrollmentInPerson = as.numeric(EnrollmentInPerson),
+    EnrollmentHybrid = as.numeric(EnrollmentHybrid),
+    EnrollmentVirtual = as.numeric(EnrollmentVirtual),
+    days = as.numeric(difftime(TimePeriodEnd, TimePeriodStart, units = 'days'))                      
+  ) |>
+  select(
+    stateabb, DistrictName, DistrictType, LearningModel, 
+    TimePeriodStart, TimePeriodEnd, days, EnrollmentTotal,
+    EnrollmentInPerson, EnrollmentHybrid, EnrollmentVirtual
+  ) |>
+  filter(
+    TimePeriodStart == mdy('1/1/2021')
+  )
+```
+
+```{r}
+#| label: trim-scp-dataset
+
+trim_scp_county_data <- scp_county_data |>
+  rename(
+    stateabb = `State Abbreviation`
+  ) |>
+  select(
+    stateabb, County, `County-Level Index`, `Family Unity`, `Community Health`,
+    `Institutional Health`, `Collective Efficacy`
+    ) |>
+  mutate(
+    County = paste(County, 'County', sep = ' ')
+  )
+
+```
+
 
 
 ```{r}
@@ -149,24 +244,25 @@ get_best_similarities <- function(
     filter(str_sub(!!sym(column1), -3) == str_sub(!!sym(column2), -3)) |>
     
     #Filters for score thresholds
-    filter(jaccard <= jaccard_threshold) |>
-    filter(dist <= dist_threshold) |>
+    filter(jaccard <= jaccard_threshold & dist <= dist_threshold) |>
     
     #Group by state and seda district and find the minimum score as well as the minimum jaccard score
-    group_by(stateabb, !!sym(column1)) |>
+    group_by(sedaadmin) |>
     slice_min(order_by = dist, with_ties = TRUE) |>  # Find minimum dist, allowing ties
-    slice_min(order_by = jaccard) |>                 # Break ties by selecting the minimum jaccard
+    slice_min(order_by = jaccard, with_ties = FALSE) |>  # Break ties by selecting the minimum jaccard
     ungroup() |>
     arrange(jaccard)
   
   return(best_similarities)
 }
 
-best_sim_poverty <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_poverty, 'seda_district', 'acs_district', 0.3, 3)
+best_sim_poverty <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_poverty, 'seda_district', 'acs_district', 0.3, 6)
 
-best_sim_housing <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_housing, 'seda_district', 'acs_district', 0.3, 3)
+best_sim_housing <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_housing, 'seda_district', 'acs_district', 0.3, 6)
 
-best_sim_financial <- get_best_similarities(test_mth_all_admindist_gys, trim_ccd_financial, 'seda_district', 'ccd_district', 0.3, 3)
+best_sim_financial <- get_best_similarities(test_mth_all_admindist_gys, trim_ccd_financial, 'seda_district', 'ccd_district', 0.3, 6)
+
+best_sim_csdh <- get_best_similarities(test_mth_all_admindist_gys, trim_csdh, 'seda_district', 'DistrictName', 0.3, 6)
 
 ```
 
@@ -178,7 +274,28 @@ comprehensive_dataset <- test_mth_all_admindist_gys |>
   left_join(best_sim_poverty, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_housing, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_financial, by = c('sedaadmin' = 'sedaadmin')) |>
-  select(sedaadmin, seda_district.x, poverty_percent, occupancy_percentage, total_revenue, total_fed_revenue, gys_mn_2022_ol.x)
+  left_join(best_sim_csdh, by = c('sedaadmin' = 'sedaadmin')) |>
+  select(
+    sedaadmin, seda_district.x, poverty_percent, occupancy_percentage, 
+    total_revenue, total_fed_revenue, gys_mn_2022_ol.x, 
+    LearningModel, EnrollmentTotal, EnrollmentInPerson, EnrollmentHybrid, 
+    EnrollmentVirtual
+  )
 ```
 
+```{r}
+#| label: add-county-mappings
+
+#Only 2246 districts had a successful county mapping
+best_sim_census_counties <- get_best_similarities(test_mth_all_admindist_gys, trim_census_sdc, 'seda_district', 'School District Name', 0.3, 6)
+
+comprehensive_dataset <- comprehensive_dataset |>
+  left_join(best_sim_census_counties, by = c('sedaadmin' = 'sedaadmin')) |>
+  select(
+    sedaadmin, seda_district.x, poverty_percent, occupancy_percentage, 
+    total_revenue, total_fed_revenue, gys_mn_2022_ol.x, 
+    LearningModel, EnrollmentTotal, EnrollmentInPerson, EnrollmentHybrid, 
+    EnrollmentVirtual, `County Names`
+  )
+```
 
