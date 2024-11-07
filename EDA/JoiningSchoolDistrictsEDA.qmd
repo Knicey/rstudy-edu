@@ -1,5 +1,6 @@
 ---
 title: "Joining School Districts"
+author: "Nathan Yang"
 format: pdf
 editor: visual
 editor_options: 
@@ -90,7 +91,6 @@ scp_county_data <- read_excel(
 
 ```
 
-
 ```{r}
 #| label: prepare-district-data-for-joining
 
@@ -167,7 +167,6 @@ trim_census_sdc <- census_school_districts |>
   )
 ```
 
-
 ```{r}
 #| label: trim-csdh-dataset
 
@@ -211,21 +210,19 @@ trim_scp_county_data <- scp_county_data |>
 
 ```
 
-
-
 ```{r}
 #| label: calculate-scores-and-filter
 
-#Calculate String Distance using the stringdist package
-#Also calculate Jaccard distance for 2-gram (1 - Jaccard Similarity)
+### Calculate String Distance using the stringdist package
+### Also calculate Jaccard distance for 2-gram (1 - Jaccard Similarity)
 
 get_best_similarities <- function(
     dataset1, dataset2, 
     column1, column2, 
     jaccard_threshold, dist_threshold
     ) {
-  #This will assume both datasets have a stateabb column
-  #The dataset with "seda_district" is assumed to be the first dataset (the one that is grouped) for best scoring
+  ### This will assume both datasets have a stateabb column
+  ### The dataset with "seda_district" is assumed to be the first dataset (the one that is grouped) for best scoring
   similarities <- full_join(dataset1, dataset2, by = c('stateabb' = 'stateabb')) |>
     mutate(
       dist = stringdist::stringdist(!!sym(column1), !!sym(column2)),
@@ -235,18 +232,18 @@ get_best_similarities <- function(
     arrange(dist)
   
   best_similarities <- similarities |>
-    #Filters for school district names that start with the same letter
+    ### Filters for school district names that start with the same letter
     filter(substr(!!sym(column1), 1, 1) == substr(!!sym(column2), 1, 1)) |>
     
-    #Filters for school district names that end with the same last three letters
-    #This is to help resolve county vs city school district names
-    #And also school district names that end in roman numerals
+    ### Filters for school district names that end with the same last three letters
+    ### This is to help resolve county vs city school district names
+    ### And also school district names that end in roman numerals
     filter(str_sub(!!sym(column1), -3) == str_sub(!!sym(column2), -3)) |>
     
-    #Filters for score thresholds
+    ### Filters for score thresholds
     filter(jaccard <= jaccard_threshold & dist <= dist_threshold) |>
     
-    #Group by state and seda district and find the minimum score as well as the minimum jaccard score
+    ### Group by state and seda district and find the minimum score tie by Jaccard
     group_by(sedaadmin) |>
     slice_min(order_by = dist, with_ties = TRUE) |>  # Find minimum dist, allowing ties
     slice_min(order_by = jaccard, with_ties = FALSE) |>  # Break ties by selecting the minimum jaccard
@@ -269,7 +266,7 @@ best_sim_csdh <- get_best_similarities(test_mth_all_admindist_gys, trim_csdh, 's
 ```{r}
 #| label: merging-best-similarity-datasets
 
-#Merge the best similarity datasets with the original datasets
+### Merge the best similarity datasets with the original datasets
 comprehensive_dataset <- test_mth_all_admindist_gys |>
   left_join(best_sim_poverty, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_housing, by = c('sedaadmin' = 'sedaadmin')) |>
@@ -286,16 +283,48 @@ comprehensive_dataset <- test_mth_all_admindist_gys |>
 ```{r}
 #| label: add-county-mappings
 
-#Only 2246 districts had a successful county mapping
-best_sim_census_counties <- get_best_similarities(test_mth_all_admindist_gys, trim_census_sdc, 'seda_district', 'School District Name', 0.3, 6)
+### Only 2246 districts had a successful county mapping
+best_sim_census_counties <- get_best_similarities(
+  test_mth_all_admindist_gys, 
+  trim_census_sdc, 
+  'seda_district', 
+  'School District Name', 
+  0.3, 6
+  )
 
-comprehensive_dataset <- comprehensive_dataset |>
+test_mth_all_admindist_gys_counties <- test_mth_all_admindist_gys |>
   left_join(best_sim_census_counties, by = c('sedaadmin' = 'sedaadmin')) |>
   select(
-    sedaadmin, seda_district.x, poverty_percent, occupancy_percentage, 
-    total_revenue, total_fed_revenue, gys_mn_2022_ol.x, 
+    sedaadmin, seda_district.x, stateabb.x, `County Names`, gys_mn_2022_ol.x
+  ) |>
+  rename(
+    stateabb = stateabb.x
+  )
+
+### Code for testing the best similarity function with a dataset from last semester
+#best_sim_acs_income <- get_best_similarities(test_mth_all_admindist_gys, acs_income_2021_cleaned, 'seda_district', 'school_district', 0.3, 6)
+
+
+### Everything gets perfectly matched, jaccard diff and string diff 0
+best_sim_scp_data <- get_best_similarities(
+  test_mth_all_admindist_gys_counties,
+  trim_scp_county_data, 
+  'County Names', 
+  'County', 
+  0.9, 10
+  )
+
+comp <- comprehensive_dataset |>
+  left_join(best_sim_scp_data, by = c('sedaadmin' = 'sedaadmin')) |>
+  select(
+    sedaadmin, seda_district.x.x, poverty_percent, occupancy_percentage, 
+    total_revenue, total_fed_revenue, gys_mn_2022_ol.x.x, 
     LearningModel, EnrollmentTotal, EnrollmentInPerson, EnrollmentHybrid, 
-    EnrollmentVirtual, `County Names`
+    EnrollmentVirtual, `County-Level Index`, `Family Unity`, `Community Health`,
+    `Institutional Health`, `Collective Efficacy`, `County`
+  ) |>
+  rename(
+    seda_district = seda_district.x.x,
+    gys_mn_2022_ol = gys_mn_2022_ol.x.x
   )
 ```
-
