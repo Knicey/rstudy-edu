@@ -36,10 +36,22 @@ acs_child_characteristics <- readr::read_csv(
   )
 
 #ACS data on poverty levels
-acs_poverty <- readr::read_csv('data/ACS/ACSST1Y2021.S1701-Data.csv', skip = 1)
+acs_poverty <- read_csv('data/ACS/ACSST1Y2021.S1701-Data.csv', skip = 1)
 
 #ACS data on housing
-acs_housing <- readr::read_csv('data/ACS/ACSDP1Y2021.DP04-Data.csv', skip = 1)
+acs_housing <- read_csv('data/ACS/ACSDP1Y2021.DP04-Data.csv', skip = 1)
+
+#ACS data on bachelor attainment
+acs_bachelor <- read_csv('data/ACS/ACSST1Y2021.S1502-Data.csv', skip = 1)
+
+#ACS data on education atainment
+acs_education <- read_csv('data/ACS/ACSST1Y2021.S1501-Data.csv', skip = 1)
+
+#ACS data on school enrollment
+acs_enrollment <- read_csv('data/ACS/ACSST1Y2021.S1401-Data.csv', skip = 1)
+
+#ACS data on martial status
+acs_marital <- read_csv('data/ACS/ACSST1Y2021.S1201-Data.csv', skip = 1)
 
 #Academic performance data from the Educational Opportunity Project
 test_admindist_gys <- readr::read_csv(
@@ -94,7 +106,7 @@ scp_county_data <- read_excel(
 ```{r}
 #| label: prepare-district-data-for-joining
 
-#SEDA Data
+### SEDA Data
 test_mth_all_admindist_gys <- test_admindist_gys |>
   filter(subject == 'mth' & subgroup == 'all') |>
   rename(seda_district = sedaadminname) |>
@@ -102,13 +114,15 @@ test_mth_all_admindist_gys <- test_admindist_gys |>
   mutate(
     seda_district = sub(" SD", "", seda_district)
   ) |>
-  select(sedaadmin, seda_district, stateabb, gys_mn_2022_ol)
+  select(sedaadmin, seda_district, stateabb)
+
+
 ```
 
 ```{r}
 #| label: trim-acs-datasets
 
-#Function to rename and split columns in ACS datasets since they follow a common format
+### Function to rename and split columns in ACS datasets since they follow a common format
 trim_acs_dataset <- function(dataset) {
   dataset |>
     mutate(
@@ -138,6 +152,42 @@ trim_acs_housing <- trim_acs_dataset(acs_housing) |>
     SMOC = 'Percent!!SELECTED MONTHLY OWNER COSTS (SMOC)!!Housing units with a mortgage',
   ) |>
   select(stateabb, acs_district, occupancy_percentage, mortgage_percentage, SMOC)
+
+trim_acs_bachelor <- trim_acs_dataset(acs_bachelor) |>
+  rename(
+    sci_eng_bachelors_percent = "Estimate!!Percent!!Total population 25 years and over with a Bachelor's degree or higher!!Science and Engineering",
+    business_bachelors_percent = "Estimate!!Percent!!Total population 25 years and over with a Bachelor's degree or higher!!Business",
+    education_bachelors_percent = "Estimate!!Percent!!Total population 25 years and over with a Bachelor's degree or higher!!Education",
+    bachelors_percent = "Estimate!!Percent!!Total population 25 years and over with a Bachelor's degree or higher"
+  ) |>
+  select(stateabb, acs_district, bachelors_percent, sci_eng_bachelors_percent, business_bachelors_percent, education_bachelors_percent)
+
+trim_acs_education <- trim_acs_dataset(acs_education) |>
+  rename(
+    less_than_hs_percent = "Estimate!!Percent!!AGE BY EDUCATIONAL ATTAINMENT!!Population 18 to 24 years!!Less than high school graduate",
+    hs_graduate_percent = "Estimate!!Percent!!AGE BY EDUCATIONAL ATTAINMENT!!Population 18 to 24 years!!High school graduate (includes equivalency)",
+    some_college_percent = "Estimate!!Percent!!AGE BY EDUCATIONAL ATTAINMENT!!Population 18 to 24 years!!Some college or associate's degree",
+    higher_ed_percent = "Estimate!!Percent!!AGE BY EDUCATIONAL ATTAINMENT!!Population 18 to 24 years!!Bachelor's degree or higher"
+  ) |>
+  select(stateabb, acs_district, less_than_hs_percent, hs_graduate_percent, some_college_percent, higher_ed_percent)
+
+trim_acs_enrollment <- trim_acs_dataset(acs_enrollment) |>
+  rename(
+    higher_ed_enrollment = "Estimate!!Percent!!Population enrolled in college or graduate school",
+    higher_ed_18_24_enrollment = "Estimate!!Percent!!Population 18 to 24 years!!Enrolled in college or graduate school",
+    k12_enrollment = "Estimate!!In public school!!Population 3 years and over enrolled in school!!Kindergarten to 12th grade"
+  ) |>
+  select(stateabb, acs_district, higher_ed_enrollment, higher_ed_18_24_enrollment, k12_enrollment)
+
+trim_acs_marital <- trim_acs_dataset(acs_marital) |>
+  rename(
+    married_percent = "Estimate!!Now married (except separated)!!Population 15 years and over...97",
+    never_married_percent = "Estimate!!Never married!!Population 15 years and over...353",
+    divorced_percent = "Estimate!!Divorced!!Population 15 years and over...225",
+    widowed_percent = "Estimate!!Widowed!!Population 15 years and over...131"
+  ) |>
+  select(stateabb, acs_district, married_percent, never_married_percent, divorced_percent, widowed_percent)
+
 ```
 
 ```{r}
@@ -223,7 +273,7 @@ get_best_similarities <- function(
     ) {
   ### This will assume both datasets have a stateabb column
   ### The dataset with "seda_district" is assumed to be the first dataset (the one that is grouped) for best scoring
-  similarities <- full_join(dataset1, dataset2, by = c('stateabb' = 'stateabb')) |>
+  similarities <- full_join(dataset1, dataset2, by = c('stateabb' = 'stateabb'), relationship = "many-to-many") |>
     mutate(
       dist = stringdist::stringdist(!!sym(column1), !!sym(column2)),
       jaccard = stringdist::stringdist(!!sym(column1), !!sym(column2), method = 'jaccard', q = 2)
@@ -249,8 +299,8 @@ get_best_similarities <- function(
     slice_min(order_by = jaccard, with_ties = FALSE) |>  # Break ties by selecting the minimum jaccard
     ungroup() |>
     arrange(jaccard)
-  
-  return(best_similarities)
+    
+  return(best_similarities[, -c(1:5)])
 }
 
 best_sim_poverty <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_poverty, 'seda_district', 'acs_district', 0.3, 6)
@@ -259,7 +309,19 @@ best_sim_housing <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_h
 
 best_sim_financial <- get_best_similarities(test_mth_all_admindist_gys, trim_ccd_financial, 'seda_district', 'ccd_district', 0.3, 6)
 
+best_sim_bachelor <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_bachelor, 'seda_district', 'acs_district', 0.3, 6)
+
+best_sim_education <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_education, 'seda_district', 'acs_district', 0.3, 6)
+
+best_sim_enrollment <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_enrollment, 'seda_district', 'acs_district', 0.3, 6)
+
+best_sim_marital <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_marital, 'seda_district', 'acs_district', 0.3, 6)
+
 best_sim_csdh <- get_best_similarities(test_mth_all_admindist_gys, trim_csdh, 'seda_district', 'DistrictName', 0.3, 6)
+
+best_sim_census_counties <- get_best_similarities(test_mth_all_admindist_gys, trim_census_sdc, 'seda_district', 'School District Name', 0.3, 3)
+
+best_sim_scp_data <- get_best_similarities(test_mth_all_admindist_gys, trim_scp_county_data, 'seda_district', 'County', 0.9, 10)
 
 ```
 
@@ -268,63 +330,15 @@ best_sim_csdh <- get_best_similarities(test_mth_all_admindist_gys, trim_csdh, 's
 
 ### Merge the best similarity datasets with the original datasets
 comprehensive_dataset <- test_mth_all_admindist_gys |>
+  left_join(best_sim_census_counties, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_poverty, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_housing, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_financial, by = c('sedaadmin' = 'sedaadmin')) |>
+  left_join(best_sim_bachelor, by = c('sedaadmin' = 'sedaadmin')) |>
+  left_join(best_sim_education, by = c('sedaadmin' = 'sedaadmin')) |>
+  left_join(best_sim_enrollment, by = c('sedaadmin' = 'sedaadmin')) |>
+  left_join(best_sim_marital, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_csdh, by = c('sedaadmin' = 'sedaadmin')) |>
-  select(
-    sedaadmin, seda_district.x, poverty_percent, occupancy_percentage, 
-    total_revenue, total_fed_revenue, gys_mn_2022_ol.x, 
-    LearningModel, EnrollmentTotal, EnrollmentInPerson, EnrollmentHybrid, 
-    EnrollmentVirtual
-  )
-```
-
-```{r}
-#| label: add-county-mappings
-
-### Only 2246 districts had a successful county mapping
-best_sim_census_counties <- get_best_similarities(
-  test_mth_all_admindist_gys, 
-  trim_census_sdc, 
-  'seda_district', 
-  'School District Name', 
-  0.3, 6
-  )
-
-test_mth_all_admindist_gys_counties <- test_mth_all_admindist_gys |>
-  left_join(best_sim_census_counties, by = c('sedaadmin' = 'sedaadmin')) |>
-  select(
-    sedaadmin, seda_district.x, stateabb.x, `County Names`, gys_mn_2022_ol.x
-  ) |>
-  rename(
-    stateabb = stateabb.x
-  )
-
-### Code for testing the best similarity function with a dataset from last semester
-#best_sim_acs_income <- get_best_similarities(test_mth_all_admindist_gys, acs_income_2021_cleaned, 'seda_district', 'school_district', 0.3, 6)
-
-
-### Everything gets perfectly matched, jaccard diff and string diff 0
-best_sim_scp_data <- get_best_similarities(
-  test_mth_all_admindist_gys_counties,
-  trim_scp_county_data, 
-  'County Names', 
-  'County', 
-  0.9, 10
-  )
-
-comp <- comprehensive_dataset |>
-  left_join(best_sim_scp_data, by = c('sedaadmin' = 'sedaadmin')) |>
-  select(
-    sedaadmin, seda_district.x.x, poverty_percent, occupancy_percentage, 
-    total_revenue, total_fed_revenue, gys_mn_2022_ol.x.x, 
-    LearningModel, EnrollmentTotal, EnrollmentInPerson, EnrollmentHybrid, 
-    EnrollmentVirtual, `County-Level Index`, `Family Unity`, `Community Health`,
-    `Institutional Health`, `Collective Efficacy`, `County`
-  ) |>
-  rename(
-    seda_district = seda_district.x.x,
-    gys_mn_2022_ol = gys_mn_2022_ol.x.x
-  )
+  left_join(best_sim_scp_data, by = c('sedaadmin' = 'sedaadmin'))
+  
 ```
