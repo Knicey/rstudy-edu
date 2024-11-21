@@ -34,31 +34,13 @@ test_admindist_gys <- readr::read_csv(
   'data/EDOpportunity/seda2023_admindist_poolsub_gys_updated_20240205.csv'
   )
 
-#ACS data on child characteristics
-acs_child_characteristics <- readr::read_csv(
-  'data/ACS/acs-child-characteristics_2021.csv', 
-  skip = 1
-  )
-
 ### School District Level Data
 
 #ACS data on poverty levels
-acs_poverty <- read_csv('data/ACS/ACSST1Y2021.S1701-Data.csv', skip = 1)
+#acs_poverty <- read_csv('data/ACS/ACSST1Y2021.S1701-Data.csv', skip = 1)
 
 #ACS data on bachelor attainment
-acs_bachelor <- read_csv('data/ACS/ACSST1Y2021.S1502-Data.csv', skip = 1)
-
-#ACS data on education atainment
-acs_education <- read_csv('data/ACS/ACSST1Y2021.S1501-Data.csv', skip = 1)
-
-#ACS data on school enrollment
-acs_enrollment <- read_csv('data/ACS/ACSST1Y2021.S1401-Data.csv', skip = 1)
-
-#ACS data on martial status
-acs_marital <- read_csv('data/ACS/ACSST1Y2021.S1201-Data.csv', skip = 1)
-
-#ACS Data Profile on Housing
-acs_housing <- read_csv('data/ACS/ACSDP1Y2021.DP04-Data.csv', skip = 1)
+#acs_bachelor <- read_csv('data/ACS/ACSST1Y2021.S1502-Data.csv', skip = 1)
 
 #Common Core of Data (CCD)
 ccd_financial <- read_sas(
@@ -83,7 +65,7 @@ read_csv_as_character <- function(file) {
   read_csv(file, col_types = cols(.default = "c"))
 }
 
-csdh_data <- lapply(cdsh_files, read_csv_as_character)
+csdh_data <- lapply(csdh_files, read_csv_as_character)
 csdh_data <- bind_rows(csdh_data)
 
 ### County Level Data
@@ -102,8 +84,11 @@ acs_social <- read_csv('data/ACS/CountyData/ACSDP5Y2022.DP02-Data.csv', skip = 1
 #ACS data on economic characteristics
 acs_economic <- read_csv('data/ACS/CountyData/ACSDP5Y2022.DP03-Data.csv', skip = 1)
 
+#ACS data on housing characteristics
+acs_housing <- read_csv('data/ACS/CountyData/ACSDP5Y2022.DP04-Data.csv', skip = 1)
+
 #ACS data on demographics and housing estimates
-acs_demo_housing <- read_csv('data/ACS/CountyData/ACSDP5Y2022.DP05-Data.csv', skip = 1)
+acs_demo <- read_csv('data/ACS/CountyData/ACSDP5Y2022.DP05-Data.csv', skip = 1)
 
 #ACS data on employment characteristics
 acs_employment <- read_csv('data/ACS/CountyData/ACSST5Y2022.S2302-Data.csv', skip = 1)
@@ -174,15 +159,45 @@ trim_acs_social <- trim_acs_dataset(acs_social) |>
     non_english = "Percent!!LANGUAGE SPOKEN AT HOME!!Population 5 years and over!!Language other than English",
     with_computer = "Percent!!COMPUTERS AND INTERNET USE!!Total households!!With a computer",
     with_internet = "Percent!!COMPUTERS AND INTERNET USE!!Total households!!With a broadband Internet subscription",
-  )
+  ) |>
+  select(stateabb, acs_region, married_household, married_household_children, male_married, female_married, male_never_married, female_never_married, male_divorced, female_divorced, birth_last_year, birth_last_year_unmarried, over_25_highschool_degree, over_25_associates_degree, over_25_bachelors_degree, over_25_graduate_degree, native_born, only_english, non_english, with_computer, with_internet)
+
+trim_acs_economic <- trim_acs_dataset(acs_economic) |>
+  rename(
+    unemployment = "Percent!!EMPLOYMENT STATUS!!Civilian labor force!!Unemployment Rate",
+    median_income = "Estimate!!INCOME AND BENEFITS (IN 2022 INFLATION-ADJUSTED DOLLARS)!!Families!!Median family income (dollars)",
+    mean_income = "Estimate!!INCOME AND BENEFITS (IN 2022 INFLATION-ADJUSTED DOLLARS)!!Families!!Mean family income (dollars)",
+    with_health_insurance = "Percent!!HEALTH INSURANCE COVERAGE!!Civilian noninstitutionalized population!!With health insurance coverage",
+    poverty = "Percent!!PERCENTAGE OF FAMILIES AND PEOPLE WHOSE INCOME IN THE PAST 12 MONTHS IS BELOW THE POVERTY LEVEL!!All families",
+  ) |>
+  select(stateabb, acs_region, unemployment, median_income, mean_income, with_health_insurance, poverty)
+
+trim_acs_housing <- trim_acs_dataset(acs_housing) |>
+  rename(
+    owner_occupied_value = "Estimate!!VALUE!!Owner-occupied units!!Median (dollars)",
+    occupancy = "Percent!!HOUSING OCCUPANCY!!Total housing units!!Occupied housing units",
+    SMOC = "Estimate!!SELECTED MONTHLY OWNER COSTS (SMOC)!!Housing units without a mortgage!!Median (dollars)",
+    rent = "Estimate!!GROSS RENT!!Occupied units paying rent!!Median (dollars)",
+    mortgage_percentage = "Percent!!MORTGAGE STATUS!!Owner-occupied units!!Housing units with a mortgage",
+  ) |>
+  select(stateabb, acs_region, owner_occupied_value, occupancy, SMOC, rent, mortgage_percentage)
+
+trim_acs_demo <- trim_acs_dataset(acs_demo) |>
+  rename(
+    population = "Estimate!!SEX AND AGE!!Total population",
+    sex_ratio = "Estimate!!SEX AND AGE!!Total population!!Sex ratio (males per 100 females)",
+    white_percent = "Percent!!RACE!!Total population!!One race!!White",
+    black_percent = "Percent!!RACE!!Total population!!One race!!Black or African American",
+    asian_percent = "Percent!!RACE!!Total population!!One race!!Asian",
+  ) |>
+  select(stateabb, acs_region, population, sex_ratio, white_percent, black_percent, asian_percent)
   
 
-acs_employment <- trim_acs_dataset(acs_employment) |>
+trim_acs_employment <- trim_acs_dataset(acs_employment) |>
   rename(
     no_workers = "Estimate!!Percent!!WORK STATUS CHARACTERISTICS!!Families!!No workers in the past 12 months",
     one_worker = "Estimate!!Percent!!WORK STATUS CHARACTERISTICS!!Families!!1 worker in the past 12 months",
     employment = "Estimate!!Percent!!WORK STATUS CHARACTERISTICS!!Families",
-    
   ) |>
   select(stateabb, acs_region, no_workers, one_worker, employment)
 
@@ -307,19 +322,6 @@ get_best_similarities <- function(
   return(best_similarities[, -c(1:5)])
 }
 
-best_sim_poverty <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_poverty, 'seda_district', 'acs_region', 0.3, 6)
-
-best_sim_housing <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_housing, 'seda_district', 'acs_region', 0.3, 6)
-
-best_sim_financial <- get_best_similarities(test_mth_all_admindist_gys, trim_ccd_financial, 'seda_district', 'ccd_district', 0.3, 6)
-
-best_sim_bachelor <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_bachelor, 'seda_district', 'acs_region', 0.3, 6)
-
-best_sim_education <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_education, 'seda_district', 'acs_region', 0.3, 6)
-
-best_sim_enrollment <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_enrollment, 'seda_district', 'acs_region', 0.3, 6)
-
-best_sim_marital <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_marital, 'seda_district', 'acs_region', 0.3, 6)
 
 best_sim_csdh <- get_best_similarities(test_mth_all_admindist_gys, trim_csdh, 'seda_district', 'DistrictName', 0.3, 6)
 
@@ -331,9 +333,15 @@ best_sim_census_counties <- get_best_similarities(test_mth_all_admindist_gys, tr
 
 best_sim_scp_data <- get_best_similarities(best_sim_census_counties, trim_scp_county_data, 'County Names', 'County', 0.9, 10)
 
-best_sim_demo_housing <- get_best_similarities(best_sim_census_counties, trim_acs_demo_housing, 'County Names', 'acs_region', 0.3, 6)
+best_sim_social <- get_best_similarities(best_sim_census_counties, trim_acs_social, 'County Names', 'acs_region', 0.3, 6)
 
-best_sim_employment <- get_best_similarities(best_sim_census_counties, acs_employment, 'County Names', 'acs_region', 0.3, 6)
+best_sim_economic <- get_best_similarities(best_sim_census_counties, trim_acs_economic, 'County Names', 'acs_region', 0.3, 6)
+
+best_sim_housing <- get_best_similarities(best_sim_census_counties, trim_acs_housing, 'County Names', 'acs_region', 0.3, 6)
+
+best_sim_demo <- get_best_similarities(best_sim_census_counties, trim_acs_demo, 'County Names', 'acs_region', 0.3, 6)
+
+best_sim_employment <- get_best_similarities(best_sim_census_counties, trim_acs_employment, 'County Names', 'acs_region', 0.3, 6)
 
 ```
 
@@ -342,17 +350,12 @@ best_sim_employment <- get_best_similarities(best_sim_census_counties, acs_emplo
 
 ### Merge the best similarity datasets with the original datasets
 comprehensive_dataset <- test_mth_all_admindist_gys |>
-  left_join(best_sim_census_counties, by = c('sedaadmin' = 'sedaadmin')) |>
-  left_join(best_sim_poverty, by = c('sedaadmin' = 'sedaadmin')) |>
-  left_join(best_sim_housing, by = c('sedaadmin' = 'sedaadmin')) |>
-  left_join(best_sim_financial, by = c('sedaadmin' = 'sedaadmin')) |>
-  left_join(best_sim_bachelor, by = c('sedaadmin' = 'sedaadmin')) |>
-  left_join(best_sim_education, by = c('sedaadmin' = 'sedaadmin')) |>
-  left_join(best_sim_enrollment, by = c('sedaadmin' = 'sedaadmin')) |>
-  left_join(best_sim_marital, by = c('sedaadmin' = 'sedaadmin')) |>
-  left_join(best_sim_csdh, by = c('sedaadmin' = 'sedaadmin')) |>
+  left_join(best_sim_census_counties, by = c('sedaadmin' = 'sedaadmin', 'stateabb' = 'stateabb')) |>
   left_join(best_sim_scp_data, by = c('sedaadmin' = 'sedaadmin')) |>
-  left_join(best_sim_demo_housing, by = c('sedaadmin' = 'sedaadmin')) |>
-  left_join(best_sim_employment, by = c('sedaadmin' = 'sedaadmin'))
+  left_join(best_sim_social, by = c('sedaadmin' = 'sedaadmin')) |>
+  left_join(best_sim_economic, by = c('sedaadmin' = 'sedaadmin')) |>
+  left_join(best_sim_housing, by = c('sedaadmin' = 'sedaadmin')) |>
+  left_join(best_sim_demo, by = c('sedaadmin' = 'sedaadmin')) |>
+  left_join(best_sim_employment, by = c('sedaadmin' = 'sedaadmin')) 
   
 ```
