@@ -29,17 +29,21 @@ library(haven)
 #| echo: false
 #| message: false
 
+#Academic performance data from the Educational Opportunity Project
+test_admindist_gys <- readr::read_csv(
+  'data/EDOpportunity/seda2023_admindist_poolsub_gys_updated_20240205.csv'
+  )
+
 #ACS data on child characteristics
 acs_child_characteristics <- readr::read_csv(
   'data/ACS/acs-child-characteristics_2021.csv', 
   skip = 1
   )
 
+### School District Level Data
+
 #ACS data on poverty levels
 acs_poverty <- read_csv('data/ACS/ACSST1Y2021.S1701-Data.csv', skip = 1)
-
-#ACS data on housing
-acs_housing <- read_csv('data/ACS/ACSDP1Y2021.DP04-Data.csv', skip = 1)
 
 #ACS data on bachelor attainment
 acs_bachelor <- read_csv('data/ACS/ACSST1Y2021.S1502-Data.csv', skip = 1)
@@ -53,13 +57,8 @@ acs_enrollment <- read_csv('data/ACS/ACSST1Y2021.S1401-Data.csv', skip = 1)
 #ACS data on martial status
 acs_marital <- read_csv('data/ACS/ACSST1Y2021.S1201-Data.csv', skip = 1)
 
-#Academic performance data from the Educational Opportunity Project
-test_admindist_gys <- readr::read_csv(
-  'data/EDOpportunity/seda2023_admindist_poolsub_gys_updated_20240205.csv'
-  )
-
-#Longitudinal School Demographic Dataset (LSDD)
-#lsdd <- read_dta('data/LSDD/LSDD_v1_beta.dta')
+#ACS Data Profile on Housing
+acs_housing <- read_csv('data/ACS/ACSDP1Y2021.DP04-Data.csv', skip = 1)
 
 #Common Core of Data (CCD)
 ccd_financial <- read_sas(
@@ -69,18 +68,15 @@ ccd_financial <- read_sas(
   )
 )
 
-#Census - School Districts and Associated Counties
-census_school_districts <- read_xls(
-  'data/Census - School Districts and Counties/sdlist-21.xls',
-  skip = 2
-)
-
 #Covid School Data Hub (CSDH)
 csdh_files <- dir(
   path = 'data/COVIDSchoolDataHub/CSDH District Files - CSV/', 
   pattern = '.csv', 
   full.names = TRUE
   )
+
+#Longitudinal School Demographic Dataset (LSDD)
+#lsdd <- read_dta('data/LSDD/LSDD_v1_beta.dta')
 
 #This function is needed since some columnms are read in as different types in some CSVs but not others
 read_csv_as_character <- function(file) {
@@ -89,6 +85,29 @@ read_csv_as_character <- function(file) {
 
 csdh_data <- lapply(cdsh_files, read_csv_as_character)
 csdh_data <- bind_rows(csdh_data)
+
+### County Level Data
+
+#Census - School Districts and Associated Counties
+census_school_districts <- read_xls(
+  'data/Census - School Districts and Counties/sdlist-21.xls',
+  skip = 2
+)
+
+### ADD IN MORE DP (data profile) datasets
+
+#ACS data on social characteristics
+acs_social <- read_csv('data/ACS/CountyData/ACSDP5Y2022.DP02-Data.csv', skip = 1)
+
+#ACS data on economic characteristics
+acs_economic <- read_csv('data/ACS/CountyData/ACSDP5Y2022.DP03-Data.csv', skip = 1)
+
+#ACS data on demographics and housing estimates
+acs_demo_housing <- read_csv('data/ACS/CountyData/ACSDP5Y2022.DP05-Data.csv', skip = 1)
+
+#ACS data on employment characteristics
+acs_employment <- read_csv('data/ACS/CountyData/ACSST5Y2022.S2302-Data.csv', skip = 1)
+
 ```
 
 ```{r}
@@ -129,64 +148,43 @@ trim_acs_dataset <- function(dataset) {
       state = sub(".*,\\s", "", dataset$'Geographic Area Name'),
       #state.abb and state.name are innate datasets in R
       stateabb = state.abb[match(state, state.name)],
-      acs_district = sub(" School District,.*$", "", dataset$'Geographic Area Name'
-                                   ),
+      acs_region = gsub(",\\s*[A-Za-z ]+$", "", sub(" School District,.*$", "", dataset$'Geographic Area Name')),
     ) |>
-    select(state, stateabb, acs_district, everything())
+    select(state, stateabb, acs_region, everything())
 }
 
-#Currently child characteristics is used as a test dataset since it has the most school districts
-trim_acs_child <- trim_acs_dataset(acs_child_characteristics) |>
-  select(stateabb, acs_district)
-
-trim_acs_poverty <- trim_acs_dataset(acs_poverty) |>
+trim_acs_social <- trim_acs_dataset(acs_social) |>
   rename(
-    poverty_percent = 'Estimate!!Percent below poverty level!!Population for whom poverty status is determined'
-  ) |>
-  select(stateabb, acs_district, poverty_percent)
+    married_household = "Percent!!HOUSEHOLDS BY TYPE!!Total households!!Married-couple household",
+    married_household_children = "Percent!!HOUSEHOLDS BY TYPE!!Total households!!Married-couple household!!With children of the householder under 18 years",
+    male_married = "Percent!!MARITAL STATUS!!Males 15 years and over!!Now married, except separated",
+    female_married = "Percent!!MARITAL STATUS!!Females 15 years and over!!Now married, except separated",
+    male_never_married = "Percent!!MARITAL STATUS!!Males 15 years and over!!Never married",
+    female_never_married = "Percent!!MARITAL STATUS!!Females 15 years and over!!Never married",
+    male_divorced ="Percent!!MARITAL STATUS!!Males 15 years and over!!Divorced",
+    female_divorced = "Percent!!MARITAL STATUS!!Females 15 years and over!!Divorced",
+    birth_last_year = "Percent!!FERTILITY!!Number of women 15 to 50 years old who had a birth in the past 12 months",
+    birth_last_year_unmarried = "Percent Margin of Error!!FERTILITY!!Number of women 15 to 50 years old who had a birth in the past 12 months",
+    over_25_highschool_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!High school graduate (includes equivalency)",
+    over_25_associates_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!Associate's degree",
+    over_25_bachelors_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!Bachelor's degree",
+    over_25_graduate_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!Graduate or professional degree",
+    native_born = "Percent!!PLACE OF BIRTH!!Total population!!Native",
+    only_english = "Percent!!LANGUAGE SPOKEN AT HOME!!Population 5 years and over!!English only",
+    non_english = "Percent!!LANGUAGE SPOKEN AT HOME!!Population 5 years and over!!Language other than English",
+    with_computer = "Percent!!COMPUTERS AND INTERNET USE!!Total households!!With a computer",
+    with_internet = "Percent!!COMPUTERS AND INTERNET USE!!Total households!!With a broadband Internet subscription",
+  )
+  
 
-trim_acs_housing <- trim_acs_dataset(acs_housing) |>
+acs_employment <- trim_acs_dataset(acs_employment) |>
   rename(
-    occupancy_percentage = 'Percent!!HOUSING OCCUPANCY!!Total housing units!!Occupied housing units',
-    mortgage_percentage = 'Percent!!MORTGAGE STATUS!!Owner-occupied units!!Housing units with a mortgage',
-    SMOC = 'Percent!!SELECTED MONTHLY OWNER COSTS (SMOC)!!Housing units with a mortgage',
+    no_workers = "Estimate!!Percent!!WORK STATUS CHARACTERISTICS!!Families!!No workers in the past 12 months",
+    one_worker = "Estimate!!Percent!!WORK STATUS CHARACTERISTICS!!Families!!1 worker in the past 12 months",
+    employment = "Estimate!!Percent!!WORK STATUS CHARACTERISTICS!!Families",
+    
   ) |>
-  select(stateabb, acs_district, occupancy_percentage, mortgage_percentage, SMOC)
-
-trim_acs_bachelor <- trim_acs_dataset(acs_bachelor) |>
-  rename(
-    sci_eng_bachelors_percent = "Estimate!!Percent!!Total population 25 years and over with a Bachelor's degree or higher!!Science and Engineering",
-    business_bachelors_percent = "Estimate!!Percent!!Total population 25 years and over with a Bachelor's degree or higher!!Business",
-    education_bachelors_percent = "Estimate!!Percent!!Total population 25 years and over with a Bachelor's degree or higher!!Education",
-    bachelors_percent = "Estimate!!Percent!!Total population 25 years and over with a Bachelor's degree or higher"
-  ) |>
-  select(stateabb, acs_district, bachelors_percent, sci_eng_bachelors_percent, business_bachelors_percent, education_bachelors_percent)
-
-trim_acs_education <- trim_acs_dataset(acs_education) |>
-  rename(
-    less_than_hs_percent = "Estimate!!Percent!!AGE BY EDUCATIONAL ATTAINMENT!!Population 18 to 24 years!!Less than high school graduate",
-    hs_graduate_percent = "Estimate!!Percent!!AGE BY EDUCATIONAL ATTAINMENT!!Population 18 to 24 years!!High school graduate (includes equivalency)",
-    some_college_percent = "Estimate!!Percent!!AGE BY EDUCATIONAL ATTAINMENT!!Population 18 to 24 years!!Some college or associate's degree",
-    higher_ed_percent = "Estimate!!Percent!!AGE BY EDUCATIONAL ATTAINMENT!!Population 18 to 24 years!!Bachelor's degree or higher"
-  ) |>
-  select(stateabb, acs_district, less_than_hs_percent, hs_graduate_percent, some_college_percent, higher_ed_percent)
-
-trim_acs_enrollment <- trim_acs_dataset(acs_enrollment) |>
-  rename(
-    higher_ed_enrollment = "Estimate!!Percent!!Population enrolled in college or graduate school",
-    higher_ed_18_24_enrollment = "Estimate!!Percent!!Population 18 to 24 years!!Enrolled in college or graduate school",
-    k12_enrollment = "Estimate!!In public school!!Population 3 years and over enrolled in school!!Kindergarten to 12th grade"
-  ) |>
-  select(stateabb, acs_district, higher_ed_enrollment, higher_ed_18_24_enrollment, k12_enrollment)
-
-trim_acs_marital <- trim_acs_dataset(acs_marital) |>
-  rename(
-    married_percent = "Estimate!!Now married (except separated)!!Population 15 years and over...97",
-    never_married_percent = "Estimate!!Never married!!Population 15 years and over...353",
-    divorced_percent = "Estimate!!Divorced!!Population 15 years and over...225",
-    widowed_percent = "Estimate!!Widowed!!Population 15 years and over...131"
-  ) |>
-  select(stateabb, acs_district, married_percent, never_married_percent, divorced_percent, widowed_percent)
+  select(stateabb, acs_region, no_workers, one_worker, employment)
 
 ```
 
@@ -269,10 +267,12 @@ trim_scp_county_data <- scp_county_data |>
 get_best_similarities <- function(
     dataset1, dataset2, 
     column1, column2, 
-    jaccard_threshold, dist_threshold
+    jaccard_threshold, dist_threshold,
+    state = TRUE, full = FALSE
     ) {
-  ### This will assume both datasets have a stateabb column
-  ### The dataset with "seda_district" is assumed to be the first dataset (the one that is grouped) for best scoring
+  
+  ### This function assume both datasets have a stateabb column (this is necessary for joining/avoiding excess comparisons)
+  
   similarities <- full_join(dataset1, dataset2, by = c('stateabb' = 'stateabb'), relationship = "many-to-many") |>
     mutate(
       dist = stringdist::stringdist(!!sym(column1), !!sym(column2)),
@@ -299,29 +299,41 @@ get_best_similarities <- function(
     slice_min(order_by = jaccard, with_ties = FALSE) |>  # Break ties by selecting the minimum jaccard
     ungroup() |>
     arrange(jaccard)
+  
+  if (full) {
+    return(best_similarities)
+  }
     
   return(best_similarities[, -c(1:5)])
 }
 
-best_sim_poverty <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_poverty, 'seda_district', 'acs_district', 0.3, 6)
+best_sim_poverty <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_poverty, 'seda_district', 'acs_region', 0.3, 6)
 
-best_sim_housing <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_housing, 'seda_district', 'acs_district', 0.3, 6)
+best_sim_housing <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_housing, 'seda_district', 'acs_region', 0.3, 6)
 
 best_sim_financial <- get_best_similarities(test_mth_all_admindist_gys, trim_ccd_financial, 'seda_district', 'ccd_district', 0.3, 6)
 
-best_sim_bachelor <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_bachelor, 'seda_district', 'acs_district', 0.3, 6)
+best_sim_bachelor <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_bachelor, 'seda_district', 'acs_region', 0.3, 6)
 
-best_sim_education <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_education, 'seda_district', 'acs_district', 0.3, 6)
+best_sim_education <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_education, 'seda_district', 'acs_region', 0.3, 6)
 
-best_sim_enrollment <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_enrollment, 'seda_district', 'acs_district', 0.3, 6)
+best_sim_enrollment <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_enrollment, 'seda_district', 'acs_region', 0.3, 6)
 
-best_sim_marital <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_marital, 'seda_district', 'acs_district', 0.3, 6)
+best_sim_marital <- get_best_similarities(test_mth_all_admindist_gys, trim_acs_marital, 'seda_district', 'acs_region', 0.3, 6)
 
 best_sim_csdh <- get_best_similarities(test_mth_all_admindist_gys, trim_csdh, 'seda_district', 'DistrictName', 0.3, 6)
 
-best_sim_census_counties <- get_best_similarities(test_mth_all_admindist_gys, trim_census_sdc, 'seda_district', 'School District Name', 0.3, 3)
 
-best_sim_scp_data <- get_best_similarities(test_mth_all_admindist_gys, trim_scp_county_data, 'seda_district', 'County', 0.9, 10)
+best_sim_census_counties <- get_best_similarities(test_mth_all_admindist_gys, trim_census_sdc, 'seda_district', 'School District Name', 0.3, 3, full = TRUE)[, -c(2:5)]
+
+### Join County on County Name
+### Append county to academic performance data and match by county name
+
+best_sim_scp_data <- get_best_similarities(best_sim_census_counties, trim_scp_county_data, 'County Names', 'County', 0.9, 10)
+
+best_sim_demo_housing <- get_best_similarities(best_sim_census_counties, trim_acs_demo_housing, 'County Names', 'acs_region', 0.3, 6)
+
+best_sim_employment <- get_best_similarities(best_sim_census_counties, acs_employment, 'County Names', 'acs_region', 0.3, 6)
 
 ```
 
@@ -339,6 +351,8 @@ comprehensive_dataset <- test_mth_all_admindist_gys |>
   left_join(best_sim_enrollment, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_marital, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_csdh, by = c('sedaadmin' = 'sedaadmin')) |>
-  left_join(best_sim_scp_data, by = c('sedaadmin' = 'sedaadmin'))
+  left_join(best_sim_scp_data, by = c('sedaadmin' = 'sedaadmin')) |>
+  left_join(best_sim_demo_housing, by = c('sedaadmin' = 'sedaadmin')) |>
+  left_join(best_sim_employment, by = c('sedaadmin' = 'sedaadmin'))
   
 ```
