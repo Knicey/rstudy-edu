@@ -60,13 +60,9 @@ csdh_files <- dir(
 #Longitudinal School Demographic Dataset (LSDD)
 #lsdd <- read_dta('data/LSDD/LSDD_v1_beta.dta')
 
-#This function is needed since some columnms are read in as different types in some CSVs but not others
-read_csv_as_character <- function(file) {
-  read_csv(file, col_types = cols(.default = "c"))
-}
 
-csdh_data <- lapply(csdh_files, read_csv_as_character)
-csdh_data <- bind_rows(csdh_data)
+### Remember to update the trim for csdh
+csdh_data <- read.csv("data/COVIDSchoolDataHub/District_Monthly_Shares_03.08.23.csv")
 
 ### County Level Data
 
@@ -148,8 +144,7 @@ trim_acs_social <- trim_acs_dataset(acs_social) |>
     female_never_married = "Percent!!MARITAL STATUS!!Females 15 years and over!!Never married",
     male_divorced ="Percent!!MARITAL STATUS!!Males 15 years and over!!Divorced",
     female_divorced = "Percent!!MARITAL STATUS!!Females 15 years and over!!Divorced",
-    birth_last_year = "Percent!!FERTILITY!!Number of women 15 to 50 years old who had a birth in the past 12 months",
-    birth_last_year_unmarried = "Percent Margin of Error!!FERTILITY!!Number of women 15 to 50 years old who had a birth in the past 12 months",
+    birth_last_year_unmarried = "Percent!!FERTILITY!!Number of women 15 to 50 years old who had a birth in the past 12 months",
     over_25_highschool_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!High school graduate (includes equivalency)",
     over_25_associates_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!Associate's degree",
     over_25_bachelors_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!Bachelor's degree",
@@ -160,7 +155,7 @@ trim_acs_social <- trim_acs_dataset(acs_social) |>
     with_computer = "Percent!!COMPUTERS AND INTERNET USE!!Total households!!With a computer",
     with_internet = "Percent!!COMPUTERS AND INTERNET USE!!Total households!!With a broadband Internet subscription",
   ) |>
-  select(stateabb, acs_region, married_household, married_household_children, male_married, female_married, male_never_married, female_never_married, male_divorced, female_divorced, birth_last_year, birth_last_year_unmarried, over_25_highschool_degree, over_25_associates_degree, over_25_bachelors_degree, over_25_graduate_degree, native_born, only_english, non_english, with_computer, with_internet)
+  select(stateabb, acs_region, married_household, married_household_children, male_married, female_married, male_never_married, female_never_married, male_divorced, female_divorced, birth_last_year_unmarried, over_25_highschool_degree, over_25_associates_degree, over_25_bachelors_degree, over_25_graduate_degree, native_born, only_english, non_english, with_computer, with_internet)
 
 trim_acs_economic <- trim_acs_dataset(acs_economic) |>
   rename(
@@ -185,21 +180,23 @@ trim_acs_housing <- trim_acs_dataset(acs_housing) |>
 trim_acs_demo <- trim_acs_dataset(acs_demo) |>
   rename(
     population = "Estimate!!SEX AND AGE!!Total population",
-    sex_ratio = "Estimate!!SEX AND AGE!!Total population!!Sex ratio (males per 100 females)",
+    sex_ratio = "Estimate!!SEX AND AGE!!Total
+    population!!Sex ratio (males per 100 females)",
+    hispanic_percent = "Percent!!HISPANIC OR LATINO AND RACE!!Total population",
     white_percent = "Percent!!RACE!!Total population!!One race!!White",
     black_percent = "Percent!!RACE!!Total population!!One race!!Black or African American",
     asian_percent = "Percent!!RACE!!Total population!!One race!!Asian",
   ) |>
-  select(stateabb, acs_region, population, sex_ratio, white_percent, black_percent, asian_percent)
+  select(stateabb, acs_region, population, sex_ratio, hispanic_percent, white_percent, black_percent, asian_percent)
   
 
 trim_acs_employment <- trim_acs_dataset(acs_employment) |>
   rename(
     no_workers = "Estimate!!Percent!!WORK STATUS CHARACTERISTICS!!Families!!No workers in the past 12 months",
     one_worker = "Estimate!!Percent!!WORK STATUS CHARACTERISTICS!!Families!!1 worker in the past 12 months",
-    employment = "Estimate!!Percent!!WORK STATUS CHARACTERISTICS!!Families",
+    employment_past_year = "Estimate!!Percent!!WORK STATUS CHARACTERISTICS!!Married-couple families!!Householder worked full-time, year-round in the past 12 months:",
   ) |>
-  select(stateabb, acs_region, no_workers, one_worker, employment)
+  select(stateabb, acs_region, no_workers, one_worker, employment_past_year)
 
 ```
 
@@ -322,6 +319,7 @@ get_best_similarities <- function(
   return(best_similarities[, -c(1:5)])
 }
 
+best_sim_ccd <- get_best_similarities(test_mth_all_admindist_gys, trim_ccd_financial, 'seda_district', 'ccd_district', 0.3, 6)
 
 best_sim_csdh <- get_best_similarities(test_mth_all_admindist_gys, trim_csdh, 'seda_district', 'DistrictName', 0.3, 6)
 
@@ -351,11 +349,12 @@ best_sim_employment <- get_best_similarities(best_sim_census_counties, trim_acs_
 ### Merge the best similarity datasets with the original datasets
 comprehensive_dataset <- test_mth_all_admindist_gys |>
   left_join(best_sim_census_counties, by = c('sedaadmin' = 'sedaadmin', 'stateabb' = 'stateabb')) |>
+  left_join(best_sim_csdh, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_scp_data, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_social, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_economic, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_housing, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_demo, by = c('sedaadmin' = 'sedaadmin')) |>
-  left_join(best_sim_employment, by = c('sedaadmin' = 'sedaadmin')) 
+  left_join(best_sim_employment, by = c('sedaadmin' = 'sedaadmin'))
   
 ```
