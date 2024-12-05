@@ -50,13 +50,6 @@ ccd_financial <- read_sas(
   )
 )
 
-#Covid School Data Hub (CSDH)
-csdh_files <- dir(
-  path = 'data/COVIDSchoolDataHub/CSDH District Files - CSV/', 
-  pattern = '.csv', 
-  full.names = TRUE
-  )
-
 #Longitudinal School Demographic Dataset (LSDD)
 #lsdd <- read_dta('data/LSDD/LSDD_v1_beta.dta')
 
@@ -103,10 +96,12 @@ scp_county_data <- read_excel(
 
 ```
 
+## Trimming Datasets
+
 ```{r}
 #| label: prepare-district-data-for-joining
 
-### SEDA Data
+### SEDA Data for schools that have recorded math scores for the all students subgroup
 test_mth_all_admindist_gys <- test_admindist_gys |>
   filter(subject == 'mth' & subgroup == 'all') |>
   rename(seda_district = sedaadminname) |>
@@ -180,8 +175,7 @@ trim_acs_housing <- trim_acs_dataset(acs_housing) |>
 trim_acs_demo <- trim_acs_dataset(acs_demo) |>
   rename(
     population = "Estimate!!SEX AND AGE!!Total population",
-    sex_ratio = "Estimate!!SEX AND AGE!!Total
-    population!!Sex ratio (males per 100 females)",
+    sex_ratio = "Estimate!!SEX AND AGE!!Total population!!Sex ratio (males per 100 females)",
     hispanic_percent = "Percent!!HISPANIC OR LATINO AND RACE!!Total population",
     white_percent = "Percent!!RACE!!Total population!!One race!!White",
     black_percent = "Percent!!RACE!!Total population!!One race!!Black or African American",
@@ -234,22 +228,11 @@ trim_csdh <- csdh_data |>
   rename(
     stateabb = StateAbbrev
   ) |>
-  mutate(
-    TimePeriodStart = mdy(TimePeriodStart),
-    TimePeriodEnd = mdy(TimePeriodEnd),
-    EnrollmentTotal = as.numeric(EnrollmentTotal),
-    EnrollmentInPerson = as.numeric(EnrollmentInPerson),
-    EnrollmentHybrid = as.numeric(EnrollmentHybrid),
-    EnrollmentVirtual = as.numeric(EnrollmentVirtual),
-    days = as.numeric(difftime(TimePeriodEnd, TimePeriodStart, units = 'days'))                      
-  ) |>
   select(
-    stateabb, DistrictName, DistrictType, LearningModel, 
-    TimePeriodStart, TimePeriodEnd, days, EnrollmentTotal,
-    EnrollmentInPerson, EnrollmentHybrid, EnrollmentVirtual
+    -c(NCESDistrictID)
   ) |>
   filter(
-    TimePeriodStart == mdy('1/1/2021')
+    month == "2021m1"
   )
 ```
 
@@ -269,6 +252,8 @@ trim_scp_county_data <- scp_county_data |>
   )
 
 ```
+
+## Calculating Similarity Scores
 
 ```{r}
 #| label: calculate-scores-and-filter
@@ -321,8 +306,7 @@ get_best_similarities <- function(
 
 best_sim_ccd <- get_best_similarities(test_mth_all_admindist_gys, trim_ccd_financial, 'seda_district', 'ccd_district', 0.3, 6)
 
-best_sim_csdh <- get_best_similarities(test_mth_all_admindist_gys, trim_csdh, 'seda_district', 'DistrictName', 0.3, 6)
-
+best_sim_csdh <- get_best_similarities(test_mth_all_admindist_gys, trim_csdh, 'seda_district', 'DistrictName', 0.3, 6, full = FALSE)
 
 best_sim_census_counties <- get_best_similarities(test_mth_all_admindist_gys, trim_census_sdc, 'seda_district', 'School District Name', 0.3, 3, full = TRUE)[, -c(2:5)]
 
@@ -343,13 +327,25 @@ best_sim_employment <- get_best_similarities(best_sim_census_counties, trim_acs_
 
 ```
 
+## Merging Datasets
+
 ```{r}
 #| label: merging-best-similarity-datasets
 
+mth_all_sores <- test_admindist_gys |>
+  filter(subject == 'mth' & subgroup == 'all') |>
+  rename(seda_district = sedaadminname) |>
+  #Special exception case for many school districts that ended with " SD"
+  mutate(
+    seda_district = sub(" SD", "", seda_district)
+  ) |>
+  select(sedaadmin, seda_district, stateabb, gys_mn_2019_ol, gys_mn_2022_ol, gys_mn_2023_ol)
+
 ### Merge the best similarity datasets with the original datasets
-comprehensive_dataset <- test_mth_all_admindist_gys |>
+comprehensive_dataset <- mth_all_sores |>
   left_join(best_sim_census_counties, by = c('sedaadmin' = 'sedaadmin', 'stateabb' = 'stateabb')) |>
   left_join(best_sim_csdh, by = c('sedaadmin' = 'sedaadmin')) |>
+  left_join(best_sim_ccd, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_scp_data, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_social, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_economic, by = c('sedaadmin' = 'sedaadmin')) |>
@@ -357,4 +353,98 @@ comprehensive_dataset <- test_mth_all_admindist_gys |>
   left_join(best_sim_demo, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_employment, by = c('sedaadmin' = 'sedaadmin'))
   
+```
+
+## Comprehensive Dataset EDA
+
+```{r First-Priority-Filter}
+### First priority is the academic performance data
+filter1a <- comprehensive_dataset |>
+  filter(!if_any(c(gys_mn_2019_ol, gys_mn_2022_ol), is.na))
+filter1b <- comprehensive_dataset |>
+  filter(!if_any(c(gys_mn_2019_ol, gys_mn_2022_ol, gys_mn_2023_ol), is.na))
+
+### Graph Comparing how many rows are left after filtering by 2019, 2022, and 2023 versus just 2019 and 2022
+ggplot() +
+  geom_bar(data = filter1a, aes(x = '2019 and 2022'), ) +
+  annotate("text", x = '2019 and 2022', y = nrow(filter1a) - 500, label = nrow(filter1a), color = "lightblue") +
+  geom_bar(data = filter1b, aes(x = '2019, 2022, and 2023')) +
+  annotate("text", x = '2019, 2022, and 2023', y = nrow(filter1b) - 500, label = nrow(filter1b), color = "lightblue") +
+  labs(title = 'Number of Rows Left After 1st Filter',
+       x = 'Filtering Criteria',
+       y = 'Number of Rows') +
+  scale_y_continuous(limits = c(0, 7060)) +
+  theme_minimal()
+```
+
+```{r Second-Priority-Filter}
+### Second priority is the ACS data 
+filter2a <- filter1a |>
+  filter(!if_any(colnames(best_sim_demo), is.na)) |>
+  filter(!if_any(colnames(best_sim_economic), is.na)) |>
+  filter(!if_any(colnames(best_sim_employment), is.na)) |>
+  filter(!if_any(colnames(best_sim_housing), is.na)) |>
+  filter(!if_any(colnames(best_sim_social), is.na))
+
+filter2b <- filter1b  |>
+  filter(!if_any(colnames(best_sim_demo), is.na)) |>
+  filter(!if_any(colnames(best_sim_economic), is.na)) |>
+  filter(!if_any(colnames(best_sim_employment), is.na)) |>
+  filter(!if_any(colnames(best_sim_housing), is.na)) |>
+  filter(!if_any(colnames(best_sim_social), is.na))
+
+### Graph Comparing how many rows are left after filtering by ACS data
+ggplot() +
+  geom_bar(data = filter2a, aes(x = '2019 and 2022'), ) +
+  annotate("text", x = '2019 and 2022', y = nrow(filter2a) - 500, label = nrow(filter2a), color = "lightblue") +
+  geom_bar(data = filter2b, aes(x = '2019, 2022, and 2023')) +
+  annotate("text", x = '2019, 2022, and 2023', y = nrow(filter2b) - 500, label = nrow(filter2b), color = "lightblue") +
+  labs(title = 'Number of Rows Left After 2nd Filter',
+       x = 'Filtering Criteria',
+       y = 'Number of Rows') +
+  scale_y_continuous(limits = c(0, 7060)) +
+  theme_minimal()
+```
+
+```{r Third-Priority-Filter}
+### Third priority is the SCP data
+filter3a <- filter2a |>
+  filter(!if_any(colnames(best_sim_scp_data), is.na))
+
+filter3b <- filter2b |>
+  filter(!if_any(colnames(best_sim_scp_data), is.na))
+
+### Graph Comparing how many rows are left after filtering by SCP data
+ggplot() +
+  geom_bar(data = filter3a, aes(x = '2019 and 2022'), ) +
+  annotate("text", x = '2019 and 2022', y = nrow(filter3a) - 500, label = nrow(filter3a), color = "lightblue") +
+  geom_bar(data = filter3b, aes(x = '2019, 2022, and 2023')) +
+  annotate("text", x = '2019, 2022, and 2023', y = nrow(filter3b) - 500, label = nrow(filter3b), color = "lightblue") +
+  labs(title = 'Number of Rows Left After 3rd Filter',
+       x = 'Filtering Criteria',
+       y = 'Number of Rows') +
+  scale_y_continuous(limits = c(0, 7060)) +
+  theme_minimal()
+
+```
+
+```{r Fourth-Priority-Filter}
+### Fourth priority is the CSDH data
+filter4a <- filter3a |>
+  filter(!if_any(colnames(best_sim_csdh), is.na))
+filter4b <- filter3b |>
+  filter(!if_any(colnames(best_sim_csdh), is.na))
+
+### Graph Comparing how many rows are left after filtering by CSDH data
+ggplot() +
+  geom_bar(data = filter4a, aes(x = '2019 and 2022'), ) +
+  annotate("text", x = '2019 and 2022', y = nrow(filter4a) - 500, label = nrow(filter4a), color = "lightblue") +
+  geom_bar(data = filter4b, aes(x = '2019, 2022, and 2023')) +
+  annotate("text", x = '2019, 2022, and 2023', y = nrow(filter4b) - 500, label = nrow(filter4b), color = "lightblue") +
+  labs(title = 'Number of Rows Left After 4th Filter',
+       x = 'Filtering Criteria',
+       y = 'Number of Rows') +
+  scale_y_continuous(limits = c(0, 7060)) +
+  theme_minimal()
+
 ```
