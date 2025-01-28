@@ -15,13 +15,14 @@ editor_options:
 #| message: false
 #| warning: false
 library(knitr) 
-library(tidyverse)
 library(patchwork)
 library(dplyr)
 library(stringr)
 library(stringdist)
 library(readxl)
 library(haven)
+library(readr)
+library(ggplot2)
 ```
 
 ```{r}
@@ -30,7 +31,7 @@ library(haven)
 #| message: false
 
 #Academic performance data from the Educational Opportunity Project
-test_admindist_gys <- readr::read_csv(
+test_admindist_gys <- read_csv(
   'data/EDOpportunity/seda2023_admindist_poolsub_gys_updated_20240205.csv'
   )
 
@@ -65,7 +66,6 @@ census_school_districts <- read_xls(
   skip = 2
 )
 
-### ADD IN MORE DP (data profile) datasets
 
 #ACS data on social characteristics
 acs_social <- read_csv('data/ACS/CountyData/ACSDP5Y2022.DP02-Data.csv', skip = 1)
@@ -446,5 +446,146 @@ ggplot() +
        y = 'Number of Rows') +
   scale_y_continuous(limits = c(0, 7060)) +
   theme_minimal()
+```
 
+```{r Exporting-Final-Dataset}
+write_csv(filter4b, 'data/IntegratedDataset.csv')
+
+```
+
+
+```{r Analysis-Fed-Rev-Test-Scores}
+
+ggplot() +
+  geom_point(data = filter4b, aes(x = total_fed_revenue,  y = gys_mn_2022_ol - gys_mn_2019_ol), color = 'blue') +
+  labs(title = 'Total Federal Revenue vs Change in Math Scores from 2019 to 2022',
+       x = 'Total Federal Revenue',
+       y = 'Change in Math Scores') +
+  theme_minimal()
+
+
+ggplot() +
+  geom_point(data = filter4b, aes(x = total_fed_revenue,  y = gys_mn_2023_ol - gys_mn_2019_ol), color = 'orange') +
+  labs(title = 'Total Federal Revenue vs Change in Math Scores from 2019 to 2023',
+       x = 'Total Federal Revenue',
+       y = 'Change in Math Scores') +
+  theme_minimal()
+
+ggplot() +
+  geom_point(data = filter4b, aes(x = total_fed_revenue,  y = gys_mn_2023_ol - gys_mn_2022_ol), color = 'darkgreen') +
+  labs(title = 'Total Federal Revenue vs Change in Math Scores from 2022 to 2023',
+       x = 'Total Federal Revenue',
+       y = 'Change in Math Scores') +
+  theme_minimal()
+
+```
+
+```{r Analysis-County-Index-Test-Scores}
+
+ggplot() +
+  geom_point(data = filter4b, aes(x = `Family Unity`,  y = gys_mn_2022_ol - gys_mn_2019_ol), color = 'blue') +
+  labs(title = 'Family Unity Index vs Change in Math Scores from 2019 to 2022',
+       x = 'Family Unity Index',
+       y = 'Change in Math Scores') +
+  theme_minimal()
+
+ggplot() +
+  geom_point(data = filter4b, aes(x = `Family Unity`,  y = gys_mn_2023_ol - gys_mn_2019_ol), color = 'orange') +
+  labs(title = 'Family Unity Index vs Change in Math Scores from 2019 to 2023',
+       x = 'Family Unity Index',
+       y = 'Change in Math Scores') +
+  theme_minimal()
+
+ggplot() +
+  geom_point(data = filter4b, aes(x = `Family Unity`,  y = gys_mn_2023_ol - gys_mn_2022_ol), color = 'darkgreen') +
+  labs(title = 'Family Unity Index vs Change in Math Scores from 2022 to 2023',
+       x = 'Family Unity Index',
+       y = 'Change in Math Scores') +
+  theme_minimal()
+
+ggplot() +
+  geom_point(data = filter4b, aes(x = `Community Health`,  y = gys_mn_2022_ol - gys_mn_2019_ol), color = 'blue') +
+  labs(title = 'Community Health Index vs Change in Math Scores from 2019 to 2022',
+       x = 'Community Health Index',
+       y = 'Change in Math Scores') +
+  theme_minimal()
+
+ggplot() +
+  geom_point(data = filter4b, aes(x = `Community Health`,  y = gys_mn_2023_ol - gys_mn_2019_ol), color = 'orange') +
+  labs(title = 'Community Health Index vs Change in Math Scores from 2019 to 2023',
+       x = 'Community Health Index',
+       y = 'Change in Math Scores') +
+  theme_minimal()
+
+ggplot() +
+  geom_point(data = filter4b, aes(x = `Community Health`,  y = gys_mn_2023_ol - gys_mn_2022_ol), color = 'darkgreen') +
+  labs(title = 'Community Health Index vs Change in Math Scores from 2022 to 2023',
+       x = 'Community Health Index',
+       y = 'Change in Math Scores') +
+  theme_minimal()
+
+ggplot() +
+  geom_point(data = filter4b, aes(x = `Institutional Health`,  y = gys_mn_2022_ol - gys_mn_2019_ol), color = 'blue') +
+  labs(title = 'Institutional Health Index vs Change in Math Scores from 2019 to 2022',
+       x = 'Institutional Health Index',
+       y = 'Change in Math Scores') +
+  theme_minimal()
+
+ggplot() +
+  geom_point(data = filter4b, aes(x = `Institutional Health`,  y = gys_mn_2023_ol - gys_mn_2019_ol), color = 'orange') +
+  labs(title = 'Institutional Health Index vs Change in Math Scores from 2019 to 2023',
+       x = 'Institutional Health Index',
+       y = 'Change in Math Scores') +
+  theme_minimal()
+
+ggplot() +
+  geom_point(data = filter4b, aes(x = `Institutional Health`,  y = gys_mn_2023_ol - gys_mn_2022_ol), color = 'darkgreen') +
+  labs(title = 'Institutional Health Index vs Change in Math Scores from 2022 to 2023',
+       x = 'Institutional Health Index',
+       y = 'Change in Math Scores') +
+  theme_minimal()
+
+
+```
+
+```{r Analysis-ACS-Data-Test-Scores}
+
+ggplot() +
+  geom_point(data = filter4b, aes(x = as.numeric(over_25_bachelors_degree),  y = gys_mn_2022_ol - gys_mn_2019_ol), color = 'blue') +
+  labs(title = 'Percent of Population with Bachelor\'s Degree vs Change in Math Scores from 2019 to 2022',
+       x = 'Percent of Population with Bachelor\'s Degree',
+       y = 'Change in Math Scores') +
+  theme_minimal()
+
+ggplot() +
+  geom_point(data = filter4b, aes(x = as.numeric(over_25_bachelors_degree),  y = gys_mn_2023_ol - gys_mn_2019_ol), color = 'orange') +
+  labs(title = 'Percent of Population with Bachelor\'s Degree vs Change in Math Scores from 2019 to 2023',
+       x = 'Percent of Population with Bachelor\'s Degree',
+       y = 'Change in Math Scores') +
+  theme_minimal()
+
+ggplot() +
+  geom_point(data = filter4b, aes(x = as.numeric(over_25_bachelors_degree),  y = gys_mn_2023_ol - gys_mn_2022_ol), color = 'darkgreen') +
+  labs(title = 'Percent of Population with Bachelor\'s Degree vs Change in Math Scores from 2022 to 2023',
+       x = 'Percent of Population with Bachelor\'s Degree',
+       y = 'Change in Math Scores') +
+  theme_minimal()
+
+```
+
+```{r Correlation-Calculations}
+
+correlations22_19 <- lapply(filter4b, function(x) {
+  cor(filter4b$gys_mn_2022_ol - filter4b$gys_mn_2019_ol, as.numeric(x))
+})
+
+correlations23_19 <- lapply(filter4b, function(x) {
+  cor(filter4b$gys_mn_2023_ol - filter4b$gys_mn_2019_ol, as.numeric(x))
+})
+
+correlations23_22 <- lapply(filter4b, function(x) {
+  cor(filter4b$gys_mn_2023_ol - filter4b$gys_mn_2022_ol, as.numeric(x))
+})
+
+  
 ```
