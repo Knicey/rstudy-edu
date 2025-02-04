@@ -332,17 +332,17 @@ best_sim_employment <- get_best_similarities(best_sim_census_counties, trim_acs_
 ```{r}
 #| label: merging-best-similarity-datasets
 
-mth_all_sores <- test_admindist_gys |>
-  filter(subject == 'mth' & subgroup == 'all') |>
+all_scores <- test_admindist_gys |>
+  filter(subgroup == 'all') |>
   rename(seda_district = sedaadminname) |>
   #Special exception case for many school districts that ended with " SD"
   mutate(
     seda_district = sub(" SD", "", seda_district)
   ) |>
-  select(sedaadmin, seda_district, stateabb, gys_mn_2019_ol, gys_mn_2022_ol, gys_mn_2023_ol)
+  select(sedaadmin, seda_district, stateabb, subject, gys_mn_2019_ol, gys_mn_2022_ol, gys_mn_2023_ol)
 
 ### Merge the best similarity datasets with the original datasets
-comprehensive_dataset <- mth_all_sores |>
+comprehensive_dataset <- all_scores |>
   left_join(best_sim_census_counties, by = c('sedaadmin' = 'sedaadmin', 'stateabb' = 'stateabb')) |>
   left_join(best_sim_csdh, by = c('sedaadmin' = 'sedaadmin')) |>
   left_join(best_sim_ccd, by = c('sedaadmin' = 'sedaadmin')) |>
@@ -373,7 +373,6 @@ ggplot() +
   labs(title = 'Number of Rows Left After 1st Filter',
        x = 'Filtering Criteria',
        y = 'Number of Rows') +
-  scale_y_continuous(limits = c(0, 7060)) +
   theme_minimal()
 ```
 
@@ -452,7 +451,6 @@ ggplot() +
 write_csv(filter4b, 'data/IntegratedDataset.csv')
 
 ```
-
 
 ```{r Analysis-Fed-Rev-Test-Scores}
 
