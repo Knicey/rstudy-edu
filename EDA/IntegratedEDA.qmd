@@ -1,0 +1,497 @@
+---
+title: "Geospatial Mapping"
+format: pdf
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Libraries/Packages
+
+```{r}
+#| label: load-pkg-data
+#| echo: false
+#| message: false
+#| warning: false
+library(knitr) 
+library(tidyverse)
+library(patchwork)
+library(stringr)
+library(usmap)
+library(maps)
+library(janitor)
+library(readxl)
+library(stringr)
+library(lme4)
+```
+
+```{r}
+#| label: load-data 
+#| echo: false 
+#| message: false
+
+integrated_ds <- readr::read_csv('data/IntegratedDataset.csv')
+```
+
+## EDA/Graphs
+
+#### Distribution of math scores
+
+```{r}
+#| label: math-scores-distribution
+
+math_scores <- integrated_ds |>
+  filter(subject == 'mth')
+
+ggplot(math_scores, aes(x = gys_mn_2019_ol)) +
+  geom_histogram(fill = "skyblue", color = "black", bins = 30) +
+  labs(title = "Distribution of Math Scores in 2019", subtitle = "Standard deviations away from 2019 national average", x = "Math Score", y = "Frequency") +
+  scale_x_continuous(limits = c(-5, 5)) +
+  scale_y_continuous(limits = c(0, 200))
+
+ggplot(math_scores, aes(x = gys_mn_2022_ol)) +
+  geom_histogram(fill = "skyblue", color = "black", bins = 30) +
+  labs(title = "Distribution of Math Scores in 2022", subtitle = "Standard deviations away from 2019 national average", x = "Math Score", y = "Frequency") +
+  scale_x_continuous(limits = c(-5, 5)) +
+  scale_y_continuous(limits = c(0, 200))
+
+ggplot(math_scores, aes(x = gys_mn_2023_ol)) +
+  geom_histogram(fill = "skyblue", color = "black", bins = 30) +
+  labs(title = "Distribution of Math Scores in 2023", subtitle = "Standard deviations away from 2019 national average", x = "Math Score", y = "Frequency") +
+  scale_x_continuous(limits = c(-5, 5)) +
+  scale_y_continuous(limits = c(0, 200))
+``` 
+
+#### Distribution of districts by state
+
+```{r}
+#| label: district-distribution
+
+ggplot(math_scores, aes(x = stateabb)) +
+  geom_bar(fill = "skyblue", color = "black") +
+  labs(title = "Distribution of Districts by State", x = "State", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+#### Distribution of math scores by total revenue
+
+```{r}
+#| label: math-scores-in-person
+
+ggplot(math_scores, aes(x = gys_mn_2019_ol, y = total_fed_revenue)) +
+  geom_density_2d()
+
+ggplot(math_scores, aes(x = total_fed_revenue, y =  gys_mn_2019_ol)) +
+  geom_point()
+```
+
+#### Distribution of math scores by County Social Index
+
+```{r}
+#| label: math-scores-county-social
+
+ggplot(math_scores, aes(x = `County_Level_Index`, y = gys_mn_2019_ol)) +
+  geom_point()
+
+```
+
+## Data Adjustments
+
+```{r}
+integrated_longer <- integrated_ds |>
+  pivot_longer(cols = starts_with("gys_mn"), names_to = "year", values_to = "gys_mn") |>
+  mutate(year = str_remove(year, "gys_mn_")) |>
+  mutate(year = str_remove(year, "_ol")) |>
+  mutate(year = as.numeric(year))
+
+integrated_longer <- integrated_longer |>
+  mutate(
+    yearsince2019 = year - 2019,
+    yearsqrdsince2019 = yearsince2019^2,
+    total_revenue = total_revenue / 1000000,
+    total_fed_revenue = total_fed_revenue / 1000000,
+    total_state_revenue = total_state_revenue / 1000000,
+    revenue_per_student = total_revenue / membership,
+    total_salaries = total_salaries / 1000000,
+    total_instructional_salaries = total_instructional_salaries / 1000000,
+    total_esser1 = total_esser1 / 1000000,
+    total_esser2 = total_esser2 / 1000000,
+    total_geer1 = total_geer1 / 1000000,
+    total_geer2 = total_geer2 / 1000000,
+    median_income = median_income / 1000,
+    mean_income = mean_income / 1000,
+    owner_occupied_value = owner_occupied_value / 1000,
+    
+  )
+
+math_longer <- integrated_longer |>
+  filter(subject == 'mth')
+```
+
+
+## Modeling
+
+### 2 Level
+
+#### Unconditional Means
+
+```{r}
+#| label: unconditional-means-model
+
+umm_model <- lmer(gys_mn~ 1 + (1|sedaadmin), 
+                  data = math_longer)
+
+summary(umm_model)
+
+icc <- 1.6162 / (1.6162 + 0.1475)
+
+```
+
+
+Interpretations
+
+- The intercept for fixed effects is -0.107 which represents the mean math score across all school districts and years in terms of standard deviations from the 2019 national average.
+
+- The std dev for the random effect intercept is 1.271 which represents the variablity in math scores across school districts from the overall mean (-0.107)
+
+- The std dev for the random effect residual is 0.384 which represents the year to year variability within a school district
+
+#### Unconditional Growth
+
+```{r}
+#| label: unconditional-growth-model
+
+ugm_model <- lmer(gys_mn~ year + (1|sedaadmin), 
+                  data = integrated_longer)
+
+summary(ugm_model)
+```
+
+```{r}
+#| label: unconditional-growth-model-county
+
+ugmc_model <- lmer(
+  gys_mn~ year + `County_Level_Index` + (1|sedaadmin), 
+  data = integrated_longer
+  )
+
+summary(ugmc_model)
+```
+
+```{r}
+#| label: unconditional-growth-model-year-yearsqrd
+
+ugmy_model <- lmer(
+  gys_mn~ yearsince2019 + (1|sedaadmin), 
+  data = integrated_longer
+  )
+
+ugmyy2_model <- lmer(
+  gys_mn~ yearsince2019 + yearsqrdsince2019 + (1|sedaadmin), 
+  data = integrated_longer
+  )
+
+summary(ugmy_model)
+summary(ugmyy2_model)
+```
+
+```{r}
+#| label: unconditional-growth-model-time-in-person
+
+ugmtip_model <- lmer(
+  gys_mn~ yearsince2019 + share_inperson + share_inperson:yearsince2019 + (yearsince2019|sedaadmin), 
+  data = math_longer
+  )
+
+summary(ugmtip_model)
+```
+
+Interpretations
+
+- The intercept is 0.126 which represents the mean math score across all school districts in 2019 that had 0% in person.
+
+- The coefficient for yearsince2019 is -0.117 which represents the average change in math scores per year across 0% in person school districts.
+
+- The coefficient for share_inperson is -0.001 which represents the average difference in math scores for every 100% increase in the share of students attending in-person classes in 2019.
+
+- The coefficient for share_inperson:yearsince2019 is 0.038 which represents the average change in the effect of share_inperson on math scores per year.
+
+```{r}
+#| label: unconditional-growth-model-time-hybrid
+
+ugmth_model <- lmer(
+  gys_mn~ yearsince2019 + share_hybrid + share_hybrid:yearsince2019 + (yearsince2019|sedaadmin), 
+  data = math_longer
+  )
+
+summary(ugmth_model)
+```
+
+Interpretations
+
+- The intercept is 0.012 which represents the mean math score across all school districts in 2019 that had 0% hybrid.
+
+- The coefficient for yearsince2019 is -0.099 which represents the average change in math scores per year across 0% hybrid school districts.
+
+- The coefficient for share_hybrid is 0.327 which represents the average difference in math scores for every 100% increase in the share of students attending hybrid classes.
+
+- The coefficient for share_hybrid:yearsince2019 is -0.001 which represents the average change in the effect of share_hybrid on math scores per year.
+
+```{r}
+#| label: unconditional-growth-model-time-virtual
+
+ugmtv_model <- lmer(
+  gys_mn~ yearsince2019 + share_virtual + share_virtual:yearsince2019 + (yearsince2019|sedaadmin), 
+  data = math_longer
+  )
+
+summary(ugmtv_model)
+```
+
+Interpretations
+
+- The intercept is 0.215 which represents the mean math score across all school districts in 2019 that had 0% virtual.
+
+- The coefficient for yearsince2019 is -0.088 which represents the average change in math scores per year across 0% virtual school districts.
+
+- The coefficient for share_virtual is -0.43 which represents the average difference in math scores for every 100% increase in the share of students attending virtual classes.
+
+- The coefficient for share_virtual:yearsince2019 is 0.055 which represents the average change in the effect of share_virtual on math scores per year.
+
+```{r}
+#| label: unconditional-growth-model-time-virtual-hybrid
+
+ugmtvh_model <- lmer(
+  gys_mn~ yearsince2019 + share_hybrid + share_virtual + share_virtual:yearsince2019 + (yearsince2019|sedaadmin), 
+  data = math_longer
+  )
+
+summary(ugmtvh_model)
+```
+
+Interpretations
+
+- Modify to use the combined in-person + hybrid term
+- Account for missing data (school districts without data)
+
+
+```{r}
+#| label: unconditional-growth-model-time-modality-revenue
+
+
+ugmtmr_model <- lmer(
+  gys_mn~ yearsince2019 + share_virtual + total_fed_revenue + share_virtual:yearsince2019 + total_fed_revenue:yearsince2019 + (yearsince2019|sedaadmin), 
+  data = math_longer
+  )
+
+summary(ugmtmr_model)
+```
+
+Interpretations
+
+- The intercept is 0.4547 which represents the mean math score across all school districts in 2019 that had 0% virtual and "no funding"
+
+- The coefficient for yearsince2019 is -0.0831 which represents the average change in math scores per year across 0% virtual and "no funding" school districts
+
+- The coefficient for share_virtual is -0.6100 which represents the average difference in math scores for every 100% increase in the share of students attending virtual classes
+
+- The coefficient for total_fed_revenue is -0.006 which represents the average difference in math scores for every $1,000,000 increase in total revenue
+
+- The coefficient for share_virtual:yearsince2019 is -0.056 which represents the average change in the effect of share_virtual on math scores per year
+
+- The coefficient for total_fed_revenue:yearsince2019 is -.0003 which represents the average change in the effect of total_fed_revenue on math scores per year
+
+### Missing Data
+
+```{r}
+#| label: missing-data-analysis
+
+math_longer |> 
+  select(gys_mn) |>
+  summary()
+
+math_longer |>
+  filter(!is.na(total_fed_revenue)) |>
+  select(gys_mn) |>
+  summary()
+
+math_longer |>
+  filter(is.na(total_fed_revenue)) |>
+  group_by(stateabb) |>
+  count()
+
+math_longer |>
+  group_by(stateabb) |>
+  count()
+  
+```
+
+
+Interpretations
+
+- We see that the states with missing revenue data are disporportionately from Arkansas, Mississippi, and Nevada
+- Because of this, I can't perform mean imputation by state
+- As such, I will strongly consider not using the revenue data or make a note of this
+- I also confirmed all other columns have data for all rows
+
+#### Converting to Categorical?
+
+One idea is to convert revenue to a categorical variable to account for the missing data (e.g. "Not Reported", "0-X", "X-Y", "Y-Z", "Z+")
+
+This could be a good way to account for the missing data, but it might introduce new problems since the missing data does not seem random by the state distribution and the new categorical variable may not be as informative as the continuous variable.
+
+### Evaluation
+
+```{r}
+#| label: Evaluating-Time-Virtual-Model
+
+ugmtv_model
+AIC(ugmtv_model)
+BIC(ugmtv_model)
+```
+
+```{r}
+#| label: Evaluating-Time-Virtual-Revenue-Model
+
+ugmtmr_model
+AIC(ugmtmr_model)
+BIC(ugmtmr_model)
+
+
+#anova(ugmtv_model, ugmtvh_model)
+
+### Anova not working? - Because the revenue model excludes ~700 observations
+#anova(ugmtv_model, ugmtmr_model)
+```
+
+```{r}
+#| label: Recalculate-ugmtv-Model
+
+revenue_ds <- math_longer |> 
+  filter(!is.na(total_revenue))
+
+revenue_ds <- revenue_ds |>
+  mutate(
+    rpm = total_revenue/membership
+  )
+
+ugmtv_model <- lmer(gys_mn~ yearsince2019 + share_virtual + share_virtual:yearsince2019 + (yearsince2019|sedaadmin),
+     data = revenue_ds)
+
+ugmtmr_model <- lmer(
+  gys_mn~ yearsince2019 + share_virtual + rpm + share_virtual:yearsince2019 + rpm:yearsince2019 + (yearsince2019|sedaadmin), 
+  data = revenue_ds
+  )
+
+anova(ugmtv_model, ugmtmr_model)
+
+summary(ugmtmr_model)
+
+```
+
+### 3 Level 
+
+#### Unconditional Means
+
+```{r}
+#| label: unconditional-means-model
+
+umm3_model <- lmer(gys_mn~ 1 + (1|sedaadmin) + (1|`County Names`), 
+                  data = math_longer)
+
+summary(umm3_model)
+```
+
+Interpretations
+
+- Mean across all school-districts and counties: -0.204
+- Variance over time within school districts: 0.148
+- Variance between school districts in the same county: 1.123
+- Variance between counties: 0.455
+
+#### Unconditional Growth
+
+```{r}
+#| label: unconditional-growth-model
+
+ugm2_model <- lmer(gys_mn~ yearsince2019 + (yearsince2019|sedaadmin), 
+                  data = math_longer)
+
+ugm3_model <- lmer(gys_mn~ yearsince2019 +  (yearsince2019|sedaadmin) + (0 + yearsince2019|`County Names`), 
+                  data = math_longer)
+
+summary(ugm2_model)
+
+summary(ugm3_model)
+```
+
+Interpretations
+
+- Mean in 2019: 0.033
+- Mean yearly change score: -0.101
+
+
+
+```{r}
+#| label: unconditional-growth-model-all-fixed
+
+all_cols <- colnames(math_longer)
+
+math_filtered <- math_longer |>
+  select(
+    -c(
+      "seda_district",
+      "stateabb",
+      "subject",
+      "year", 
+      "share_inperson",
+      "share_hybrid",
+      "total_revenue",
+      "County_Level_Index"
+      )
+    )
+
+ugm3ALL_modela <- lmer(
+  gys_mn ~ . -sedaadmin -`County Names` + (yearsince2019|sedaadmin) + (0 + yearsince2019|`County Names`),
+  data = math_filtered
+)
+  
+
+ugm3ALL_model <- lmer(
+  paste(
+    "gys_mn ~",
+    paste(
+      all_cols[!all_cols %in% c(
+        "gys_mn", 
+        "sedaadmin", 
+        "seda_district",
+        "stateabb",
+        "subject",
+        "year", 
+        #"yearsince2019",
+        #"yearsqrdsince2019",
+        "County Names",
+        "share_inperson",
+        "share_hybrid",
+        "total_revenue",
+        "Family_Unity"
+        )], 
+      collapse = " + "
+      ),
+    "+ (yearsince2019|sedaadmin) + (0 + yearsince2019|`County Names`)"
+  ),
+  data = math_longer
+)
+
+summary(ugm3ALL_model)
+```
+
+#### Trimming of Correlated Variables
+
+```{r}
+#| label: unconditional-growth-model-all-trimmed
+
+
+
+```
+
