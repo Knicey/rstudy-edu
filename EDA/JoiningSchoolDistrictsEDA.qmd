@@ -55,8 +55,10 @@ ccd_financial <- read_sas(
 #lsdd <- read_dta('data/LSDD/LSDD_v1_beta.dta')
 
 
-### Remember to update the trim for csdh
-csdh_data <- read.csv("data/COVIDSchoolDataHub/District_Monthly_Shares_03.08.23.csv")
+### Monthly Shares (consider dropping)
+#csdh_data <- read.csv("data/COVIDSchoolDataHub/District_Monthly_Shares_03.08.23.csv")
+
+csdh_data <- read.csv("data/COVIDSchoolDataHub/District_Overall_Shares_03.08.23.csv")
 
 ### County Level Data
 
@@ -114,6 +116,8 @@ test_mth_all_admindist_gys <- test_admindist_gys |>
 
 ```
 
+### ACS
+
 ```{r}
 #| label: trim-acs-datasets
 
@@ -139,7 +143,6 @@ trim_acs_social <- trim_acs_dataset(acs_social) |>
     female_never_married = "Percent!!MARITAL STATUS!!Females 15 years and over!!Never married",
     male_divorced ="Percent!!MARITAL STATUS!!Males 15 years and over!!Divorced",
     female_divorced = "Percent!!MARITAL STATUS!!Females 15 years and over!!Divorced",
-    birth_last_year_unmarried = "Percent!!FERTILITY!!Number of women 15 to 50 years old who had a birth in the past 12 months",
     over_25_highschool_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!High school graduate (includes equivalency)",
     over_25_associates_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!Associate's degree",
     over_25_bachelors_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!Bachelor's degree",
@@ -150,7 +153,7 @@ trim_acs_social <- trim_acs_dataset(acs_social) |>
     with_computer = "Percent!!COMPUTERS AND INTERNET USE!!Total households!!With a computer",
     with_internet = "Percent!!COMPUTERS AND INTERNET USE!!Total households!!With a broadband Internet subscription",
   ) |>
-  select(stateabb, acs_region, married_household, married_household_children, male_married, female_married, male_never_married, female_never_married, male_divorced, female_divorced, birth_last_year_unmarried, over_25_highschool_degree, over_25_associates_degree, over_25_bachelors_degree, over_25_graduate_degree, native_born, only_english, non_english, with_computer, with_internet)
+  select(stateabb, acs_region, married_household, married_household_children, male_married, female_married, male_never_married, female_never_married, male_divorced, female_divorced, over_25_highschool_degree, over_25_associates_degree, over_25_bachelors_degree, over_25_graduate_degree, native_born, only_english, non_english, with_computer, with_internet)
 
 trim_acs_economic <- trim_acs_dataset(acs_economic) |>
   rename(
@@ -176,7 +179,7 @@ trim_acs_demo <- trim_acs_dataset(acs_demo) |>
   rename(
     population = "Estimate!!SEX AND AGE!!Total population",
     sex_ratio = "Estimate!!SEX AND AGE!!Total population!!Sex ratio (males per 100 females)",
-    hispanic_percent = "Percent!!HISPANIC OR LATINO AND RACE!!Total population",
+    hispanic_percent = "Percent!!HISPANIC OR LATINO AND RACE!!Total population!!Hispanic or Latino (of any race)",
     white_percent = "Percent!!RACE!!Total population!!One race!!White",
     black_percent = "Percent!!RACE!!Total population!!One race!!Black or African American",
     asian_percent = "Percent!!RACE!!Total population!!One race!!Asian",
@@ -194,6 +197,8 @@ trim_acs_employment <- trim_acs_dataset(acs_employment) |>
 
 ```
 
+### CCD
+
 ```{r}
 #| label: trim-ccd-dataset
 
@@ -203,11 +208,22 @@ trim_ccd_financial <- ccd_financial |>
     ccd_district = NAME,
     membership = MEMBERSCH,
     total_revenue = TOTALREV,
+    total_state_revenue = TSTREV,
     total_fed_revenue = TFEDREV,
+    total_local_revenue = TLOCREV,
+    total_salaries = Z32,
+    total_instructional_salaries = Z33,
+    total_esser1 = AR1,
+    total_esser2 = AR1A,
+    total_arp_esser = AR1B,
+    total_geer1 = AR2,
+    total_geer2 = AR2A
   ) |>
-  select(stateabb, ccd_district, membership, total_revenue, total_fed_revenue)
+  select(stateabb, ccd_district, membership, total_revenue, total_state_revenue, total_fed_revenue, total_local_revenue, total_salaries, total_instructional_salaries, total_esser1, total_esser2, total_arp_esser, total_geer1, total_geer2)
 
 ```
+
+### Census
 
 ```{r}
 #| label: trim-census-dataset
@@ -221,20 +237,22 @@ trim_census_sdc <- census_school_districts |>
   )
 ```
 
+### CSDH
+
 ```{r}
 #| label: trim-csdh-dataset
 
 trim_csdh <- csdh_data |>
   rename(
-    stateabb = StateAbbrev
+    stateabb = StateAbbrev,
   ) |>
   select(
-    -c(NCESDistrictID)
-  ) |>
-  filter(
-    month == "2021m1"
-  )
+    -c(NCESDistrictID),
+    -c(StateAssignedDistrictID)
+  ) 
 ```
+
+### SCP
 
 ```{r}
 #| label: trim-scp-dataset
@@ -244,11 +262,23 @@ trim_scp_county_data <- scp_county_data |>
     stateabb = `State Abbreviation`
   ) |>
   select(
-    stateabb, County, `County-Level Index`, `Family Unity`, `Community Health`,
-    `Institutional Health`, `Collective Efficacy`
+    stateabb, 
+    County, 
+    `County-Level Index`, 
+    `Family Unity`, 
+    `Community Health`,
+    `Institutional Health`, 
+    `Collective Efficacy`
     ) |>
   mutate(
     County = paste(County, 'County', sep = ' ')
+  ) |>
+  rename(
+    County_Level_Index = `County-Level Index`,
+    Family_Unity = `Family Unity`,
+    Community_Health = `Community Health`,
+    Institutional_Health = `Institutional Health`,
+    Collective_Efficacy = `Collective Efficacy`
   )
 
 ```
@@ -447,9 +477,10 @@ ggplot() +
   theme_minimal()
 ```
 
+## Exporting
+
 ```{r Exporting-Final-Dataset}
 write_csv(filter4b, 'data/IntegratedDataset.csv')
-
 ```
 
 ```{r Analysis-Fed-Rev-Test-Scores}
@@ -481,63 +512,63 @@ ggplot() +
 ```{r Analysis-County-Index-Test-Scores}
 
 ggplot() +
-  geom_point(data = filter4b, aes(x = `Family Unity`,  y = gys_mn_2022_ol - gys_mn_2019_ol), color = 'blue') +
+  geom_point(data = filter4b, aes(x = `Family_Unity`,  y = gys_mn_2022_ol - gys_mn_2019_ol), color = 'blue') +
   labs(title = 'Family Unity Index vs Change in Math Scores from 2019 to 2022',
        x = 'Family Unity Index',
        y = 'Change in Math Scores') +
   theme_minimal()
 
 ggplot() +
-  geom_point(data = filter4b, aes(x = `Family Unity`,  y = gys_mn_2023_ol - gys_mn_2019_ol), color = 'orange') +
+  geom_point(data = filter4b, aes(x = `Family_Unity`,  y = gys_mn_2023_ol - gys_mn_2019_ol), color = 'orange') +
   labs(title = 'Family Unity Index vs Change in Math Scores from 2019 to 2023',
        x = 'Family Unity Index',
        y = 'Change in Math Scores') +
   theme_minimal()
 
 ggplot() +
-  geom_point(data = filter4b, aes(x = `Family Unity`,  y = gys_mn_2023_ol - gys_mn_2022_ol), color = 'darkgreen') +
+  geom_point(data = filter4b, aes(x = `Family_Unity`,  y = gys_mn_2023_ol - gys_mn_2022_ol), color = 'darkgreen') +
   labs(title = 'Family Unity Index vs Change in Math Scores from 2022 to 2023',
        x = 'Family Unity Index',
        y = 'Change in Math Scores') +
   theme_minimal()
 
 ggplot() +
-  geom_point(data = filter4b, aes(x = `Community Health`,  y = gys_mn_2022_ol - gys_mn_2019_ol), color = 'blue') +
+  geom_point(data = filter4b, aes(x = `Community_Health`,  y = gys_mn_2022_ol - gys_mn_2019_ol), color = 'blue') +
   labs(title = 'Community Health Index vs Change in Math Scores from 2019 to 2022',
        x = 'Community Health Index',
        y = 'Change in Math Scores') +
   theme_minimal()
 
 ggplot() +
-  geom_point(data = filter4b, aes(x = `Community Health`,  y = gys_mn_2023_ol - gys_mn_2019_ol), color = 'orange') +
+  geom_point(data = filter4b, aes(x = `Community_Health`,  y = gys_mn_2023_ol - gys_mn_2019_ol), color = 'orange') +
   labs(title = 'Community Health Index vs Change in Math Scores from 2019 to 2023',
        x = 'Community Health Index',
        y = 'Change in Math Scores') +
   theme_minimal()
 
 ggplot() +
-  geom_point(data = filter4b, aes(x = `Community Health`,  y = gys_mn_2023_ol - gys_mn_2022_ol), color = 'darkgreen') +
+  geom_point(data = filter4b, aes(x = `Community_Health`,  y = gys_mn_2023_ol - gys_mn_2022_ol), color = 'darkgreen') +
   labs(title = 'Community Health Index vs Change in Math Scores from 2022 to 2023',
        x = 'Community Health Index',
        y = 'Change in Math Scores') +
   theme_minimal()
 
 ggplot() +
-  geom_point(data = filter4b, aes(x = `Institutional Health`,  y = gys_mn_2022_ol - gys_mn_2019_ol), color = 'blue') +
+  geom_point(data = filter4b, aes(x = `Institutional_Health`,  y = gys_mn_2022_ol - gys_mn_2019_ol), color = 'blue') +
   labs(title = 'Institutional Health Index vs Change in Math Scores from 2019 to 2022',
        x = 'Institutional Health Index',
        y = 'Change in Math Scores') +
   theme_minimal()
 
 ggplot() +
-  geom_point(data = filter4b, aes(x = `Institutional Health`,  y = gys_mn_2023_ol - gys_mn_2019_ol), color = 'orange') +
+  geom_point(data = filter4b, aes(x = `Institutional_Health`,  y = gys_mn_2023_ol - gys_mn_2019_ol), color = 'orange') +
   labs(title = 'Institutional Health Index vs Change in Math Scores from 2019 to 2023',
        x = 'Institutional Health Index',
        y = 'Change in Math Scores') +
   theme_minimal()
 
 ggplot() +
-  geom_point(data = filter4b, aes(x = `Institutional Health`,  y = gys_mn_2023_ol - gys_mn_2022_ol), color = 'darkgreen') +
+  geom_point(data = filter4b, aes(x = `Institutional_Health`,  y = gys_mn_2023_ol - gys_mn_2022_ol), color = 'darkgreen') +
   labs(title = 'Institutional Health Index vs Change in Math Scores from 2022 to 2023',
        x = 'Institutional Health Index',
        y = 'Change in Math Scores') +
