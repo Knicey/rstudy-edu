@@ -102,7 +102,7 @@ integrated_longer <- integrated_ds |>
   pivot_longer(cols = starts_with("gys_mn"), names_to = "year", values_to = "gys_mn") |>
   mutate(year = str_remove(year, "gys_mn_")) |>
   mutate(year = str_remove(year, "_ol")) |>
-  mutate(year = as.numeric(year))
+  mutate(year = as.numeric(year)) 
 
 integrated_longer <- integrated_longer |>
   mutate(
@@ -114,10 +114,13 @@ integrated_longer <- integrated_longer |>
     revenue_per_student = total_revenue / membership,
     total_salaries = total_salaries / 1000000,
     total_instructional_salaries = total_instructional_salaries / 1000000,
+    inst_salaries_per_student = total_instructional_salaries / membership,
     total_esser1 = total_esser1 / 1000000,
     total_esser2 = total_esser2 / 1000000,
     total_geer1 = total_geer1 / 1000000,
     total_geer2 = total_geer2 / 1000000,
+    esser_per_student = (total_esser1 + total_esser2) / membership,
+    geer_per_student = (total_geer1 + total_geer2) / membership,
     median_income = median_income / 1000,
     mean_income = mean_income / 1000,
     owner_occupied_value = owner_occupied_value / 1000,
@@ -488,10 +491,169 @@ summary(ugm3ALL_model)
 
 #### Trimming of Correlated Variables
 
+Variables by Category
+
+- School Modality
+  - `share_inperson`
+  - `share_hybrid`
+  - `share_virtual`
+  
 ```{r}
-#| label: unconditional-growth-model-all-trimmed
+#| label: correlation-check-modality
 
+math_longer_rev <- math_longer |>
+  filter(!is.na(total_revenue))
 
-
+cor(math_longer_rev |>
+  select(
+    share_inperson,
+    share_hybrid,
+    share_virtual
+  )
+)
+ 
 ```
+
+We see that share_inperson and share_hybrid are highly correlated, so we will remove share_hybrid from the model. share_virtual is not as correlated with the other two, so we will keep it in the model.
+
+  
+- Revenue/Funding
+  - `membership`
+  - `total_revenue`
+  - `total_fed_revenue`
+  - `total_state_revenue`
+  - `total_local_revenue`
+  - `revenue_per_student`
+  - `inst_salaries_per_student`
+  - `total_salaries`
+  - `total_instructional_salaries`
+  - `total_esser1`
+  - `total_esser2`
+  - `esser_per_student`
+  - `total_geer1`
+  - `total_geer2`
+  - `geer_per_student`
+  
+```{r}
+#| label: correlation-check-revenue
+
+cor(math_longer_rev |>
+  select(
+    membership,
+    total_revenue,
+    total_fed_revenue,
+    total_state_revenue,
+    total_local_revenue,
+    revenue_per_student,
+    inst_salaries_per_student,
+    total_salaries,
+    total_instructional_salaries,
+    total_esser1,
+    total_esser2,
+    esser_per_student,
+    total_geer1,
+    total_geer2,
+    geer_per_student
+  )
+)
+```
+
+We see that membership and the total salary variables are highly correlated with all the revenue variables, so we will remove those from the model. All the revenues variables are also highly correlated with each other, so we will just keep one for our model (total_revenue). The variables that were aggregated per student (revenue_per_student, inst_salaries_per_student, esser_per_student, geer_per_student) are not strongly correlated with many variables. We will keep all of these variables and remove the emergency funding variables.
+  
+- Social Capital
+  - `County_Level_Index`
+  - `Family_Unity`
+  - `Community_Health`
+  - `Institutional_Health`
+  - `Collective_Efficacy`
+  
+```{r}
+#| label: correlation-check-social
+
+cor(math_longer_rev |>
+  select(
+    County_Level_Index,
+    Family_Unity,
+    Community_Health,
+    Institutional_Health,
+    Collective_Efficacy
+  )
+)
+```
+
+The County Level Index is calculated as a linear combination of the other variables, so we will remove the other variables from the model. This is why we high correlation among all the variables.
+  
+- Social Factors
+  - `married_household`
+  - `married_household_children`
+  - `male_married`
+  - `female_married`
+  - `male_never_married`
+  - `female_never_married`
+  - `male_divorced`
+  - `female_divorced`
+  - `over_25_highschool_degree`
+  - `over_25_bachelors_degree`
+  - `over_25_associates_degree`
+  - `over_25_bachelors_degree`
+  - `over_25_graduate_degree`
+  
+```{r}
+#| label: correlation-check-social-factors
+
+cor(math_longer_rev |>
+  select(
+    married_household,
+    married_household_children,
+    male_married,
+    female_married,
+    male_never_married,
+    female_never_married,
+    male_divorced,
+    female_divorced,
+    over_25_highschool_degree,
+    over_25_bachelors_degree,
+    over_25_associates_degree,
+    over_25_bachelors_degree,
+    over_25_graduate_degree
+  )
+)
+```
+
+We see that the variables related to marital status are highly correlated with each other, so we will remove all but married_household. The variables related to education are also highly correlated with each other, so we will remove all but over_25_highschool_degree.
+
+  
+- Demographics
+  - `native_born`
+  - `only_english`
+  - `non_english`
+  - `with_computer`
+  - `with_internet`
+  - `population`
+  - `sex_ratio`
+  - `hispanic_percent`
+  - `white_percent`
+  - `black_percent`
+  - `asian_percent`
+
+- Employment
+  - `no_workers`
+  - `one_worker`
+  - `employment_past_year`
+  - `unemployment`
+  
+- Income
+  - `median_income`
+  - `mean_income`
+  - `with_health_insurance`
+  - `poverty`
+  - `owner_occupied_value`
+  - `occupancy`
+  - `SMOC`
+  - `rent`
+  - `mortgage_percentage`
+  
+  
+
+  
 
