@@ -143,17 +143,15 @@ trim_acs_social <- trim_acs_dataset(acs_social) |>
     female_never_married = "Percent!!MARITAL STATUS!!Females 15 years and over!!Never married",
     male_divorced ="Percent!!MARITAL STATUS!!Males 15 years and over!!Divorced",
     female_divorced = "Percent!!MARITAL STATUS!!Females 15 years and over!!Divorced",
-    over_25_highschool_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!High school graduate (includes equivalency)",
-    over_25_associates_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!Associate's degree",
-    over_25_bachelors_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!Bachelor's degree",
-    over_25_graduate_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!Graduate or professional degree",
+    over_25_highschool_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!High school graduate or higher",
+    over_25_bachelors_degree = "Percent!!EDUCATIONAL ATTAINMENT!!Population 25 years and over!!Bachelor's degree or higher",
     native_born = "Percent!!PLACE OF BIRTH!!Total population!!Native",
     only_english = "Percent!!LANGUAGE SPOKEN AT HOME!!Population 5 years and over!!English only",
     non_english = "Percent!!LANGUAGE SPOKEN AT HOME!!Population 5 years and over!!Language other than English",
     with_computer = "Percent!!COMPUTERS AND INTERNET USE!!Total households!!With a computer",
     with_internet = "Percent!!COMPUTERS AND INTERNET USE!!Total households!!With a broadband Internet subscription",
   ) |>
-  select(stateabb, acs_region, married_household, married_household_children, male_married, female_married, male_never_married, female_never_married, male_divorced, female_divorced, over_25_highschool_degree, over_25_associates_degree, over_25_bachelors_degree, over_25_graduate_degree, native_born, only_english, non_english, with_computer, with_internet)
+  select(stateabb, acs_region, married_household, married_household_children, male_married, female_married, male_never_married, female_never_married, male_divorced, female_divorced, over_25_highschool_degree, over_25_bachelors_degree, native_born, only_english, non_english, with_computer, with_internet)
 
 trim_acs_economic <- trim_acs_dataset(acs_economic) |>
   rename(

@@ -124,7 +124,7 @@ integrated_longer <- integrated_longer |>
     median_income = median_income / 1000,
     mean_income = mean_income / 1000,
     owner_occupied_value = owner_occupied_value / 1000,
-    
+    population = population / 1000,
   )
 
 math_longer <- integrated_longer |>
@@ -440,26 +440,6 @@ Interpretations
 
 all_cols <- colnames(math_longer)
 
-math_filtered <- math_longer |>
-  select(
-    -c(
-      "seda_district",
-      "stateabb",
-      "subject",
-      "year", 
-      "share_inperson",
-      "share_hybrid",
-      "total_revenue",
-      "County_Level_Index"
-      )
-    )
-
-ugm3ALL_modela <- lmer(
-  gys_mn ~ . -sedaadmin -`County Names` + (yearsince2019|sedaadmin) + (0 + yearsince2019|`County Names`),
-  data = math_filtered
-)
-  
-
 ugm3ALL_model <- lmer(
   paste(
     "gys_mn ~",
@@ -487,6 +467,13 @@ ugm3ALL_model <- lmer(
 )
 
 summary(ugm3ALL_model)
+
+###Variables with t values > 2
+
+summary(ugm3ALL_model)$coefficients |>
+  as.data.frame() |>
+  filter(abs(`t value`) > 2)
+
 ```
 
 #### Trimming of Correlated Variables
@@ -581,7 +568,7 @@ cor(math_longer_rev |>
 )
 ```
 
-The County Level Index is calculated as a linear combination of the other variables, so we will remove the other variables from the model. This is why we high correlation among all the variables.
+The County Level Index is calculated as a linear combination of the other variables, so we will remove the other variables from the model. This is why we see high correlation among all the variables.
   
 - Social Factors
   - `married_household`
@@ -594,9 +581,6 @@ The County Level Index is calculated as a linear combination of the other variab
   - `female_divorced`
   - `over_25_highschool_degree`
   - `over_25_bachelors_degree`
-  - `over_25_associates_degree`
-  - `over_25_bachelors_degree`
-  - `over_25_graduate_degree`
   
 ```{r}
 #| label: correlation-check-social-factors
@@ -613,15 +597,11 @@ cor(math_longer_rev |>
     female_divorced,
     over_25_highschool_degree,
     over_25_bachelors_degree,
-    over_25_associates_degree,
-    over_25_bachelors_degree,
-    over_25_graduate_degree
   )
 )
 ```
 
-We see that the variables related to marital status are highly correlated with each other, so we will remove all but married_household. The variables related to education are also highly correlated with each other, so we will remove all but over_25_highschool_degree.
-
+We see that the variables related to marital status are highly correlated with each other, so we will remove all but married_household. The variables related to education are surprisingly not highly correlated with each other, so we will keep both of those variables.
   
 - Demographics
   - `native_born`
@@ -635,12 +615,54 @@ We see that the variables related to marital status are highly correlated with e
   - `white_percent`
   - `black_percent`
   - `asian_percent`
+  
+```{r}
+#| label: correlation-check-demographics
+
+cor(math_longer_rev |>
+  select(
+    native_born,
+    only_english,
+    non_english,
+    with_computer,
+    with_internet,
+    population,
+    sex_ratio,
+    hispanic_percent,
+    white_percent,
+    black_percent,
+    asian_percent
+  )
+)
+```
+
+We see that native_born, only_english, and non_english are highly correlated with each other, so we will remove all but native_born. The variables related to computer and internet usage are also highly correlated with each other, so we will remove with_internet. The variables related to racial demographics are not highly correlated with each other, so we will keep all of those variables.
+
+white_percent is highly correlated with black_percent, but we will keep both of these variables in the model since they are both important indicators of racial demographics. We would expect this kind of relationship because the variables are percentages and typically sum close to 1.
+
+asian_percent is also highly correlated with population, but we will keep both of these variables in the model since they are both important indicators of demographics.
 
 - Employment
   - `no_workers`
   - `one_worker`
   - `employment_past_year`
   - `unemployment`
+
+```{r}
+#| label: correlation-check-employment
+
+cor(math_longer_rev |>
+  select(
+    no_workers,
+    one_worker,
+    employment_past_year,
+    unemployment
+  )
+)
+```
+
+We see that no_workers and employment_past_year are highly correlated with each other, so we will remove employment_past_year. The other variables are not highly correlated with each other, so we will keep all of those variables.
+
   
 - Income
   - `median_income`
@@ -652,7 +674,158 @@ We see that the variables related to marital status are highly correlated with e
   - `SMOC`
   - `rent`
   - `mortgage_percentage`
+
+```{r}
+#| label: correlation-check-income
+
+cor(math_longer_rev |>
+  select(
+    median_income,
+    mean_income,
+    with_health_insurance,
+    poverty,
+    owner_occupied_value,
+    occupancy,
+    SMOC,
+    rent,
+    mortgage_percentage
+  )
+)
+```
+
+We see that median_income and mean_income are highly correlated with each other, so we will remove mean_income. median_income is also highly correlated with poverty and the economic variables owner_occuiped_value, SMOC, rent, and mortgage_percentage. We will remove all of these variables except for median_income. The other variables are not highly correlated with each other, so we will keep all of those variables.
+
+median_income is highly correlated with poverty, but we will keep both of these variables in the model for the sake of interpretability since they are both important indicators of economic status.
+
+- Final List of Variables
+  - `share_virtual`
+  - `revenue_per_student`
+  - `esser_per_student`
+  - `geer_per_student`
+  - `County_Level_Index`
+  - `married_household`
+  - `over_25_highschool_degree`
+  - `over_25_bachelors_degree`
+  - `native_born`
+  - `with_computer`
+  - `population`
+  - `sex_ratio`
+  - `hispanic_percent`
+  - `white_percent`
+  - `black_percent`
+  - `asian_percent`
+  - `with_internet`
+  - `no_workers`
+  - `one_worker`
+  - `unemployment`
+  - `median_income`
+  - `with_health_insurance`
+  - `poverty`
+  - `occupancy`
   
+```{r}
+#| label: final-variable-list
+
+math_filtered <- math_longer_rev |>
+  select(
+    gys_mn,
+    yearsince2019,
+    yearsqrdsince2019,
+    share_virtual,
+    #total_revenue,
+    revenue_per_student,
+    esser_per_student,
+    geer_per_student,
+    County_Level_Index,
+    married_household,
+    over_25_highschool_degree,
+    #over_25_bachelors_degree,
+    #native_born,
+    with_computer,
+    population,
+    sex_ratio,
+    hispanic_percent,
+    #white_percent,
+    black_percent,
+    asian_percent,
+    no_workers,
+    one_worker,
+    unemployment,
+    median_income,
+    #with_health_insurance,
+    #poverty,
+    occupancy
+  )
+
+cor(math_filtered)
+
+```
+
+#### New Model
+
+```{r}
+#| label: new-model
+
+library(rms)
+
+ugm3NEW_model <- lmer(
+  paste(
+    "gys_mn ~",
+    paste(
+      colnames(math_filtered),
+      collapse = " + "
+      ),
+    "+ (yearsince2019|sedaadmin) + (0 + yearsince2019|`County Names`)"
+  ),
+  data = math_longer_rev
+)
+
+
+summary(ugm3NEW_model)
+ nobs sigma logLik   AIC   BIC REMLcrit df.residual
+  <int> <dbl>  <dbl> <dbl> <dbl>    <dbl>       <int>
+1  3444 0.187 -2370. 4797. 4969.    4741.        3416
+
+
+linear_model <- lm(
+  gys_mn ~ .,
+  data = math_filtered
+)
+
+vif(linear_model)
+
+```
+
+If we filter variables with t values > 2, we see that the following variables are significant:
+
+```{r}
+#| label: significant-variables
+
+summary(ugm3NEW_model)$coefficients |>
+  as.data.frame() |>
+  filter(abs(`t value`) > 2)
+```
+
+This closely alligns with the filtered list from the all-variables model and this is expected since many of those variables that were removed were highly correlated with each other.
+
+In the end we have the following variables
+
+Time
+- yearsince2019
+- yearsqrdsince2019
+
+School Modality
+- share_virtual
+
+Revenue/Funding
+- esser_per_student
+- geer_per_student
+
+County-Level Demographics
+- asian_percent
+- unemployment
+- median_income
+
   
 
   
