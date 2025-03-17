@@ -1,5 +1,5 @@
 ---
-title: "Geospatial Mapping"
+title: "IntegratedEDA"
 format: pdf
 editor: visual
 editor_options: 
@@ -60,7 +60,7 @@ ggplot(math_scores, aes(x = gys_mn_2023_ol)) +
   labs(title = "Distribution of Math Scores in 2023", subtitle = "Standard deviations away from 2019 national average", x = "Math Score", y = "Frequency") +
   scale_x_continuous(limits = c(-5, 5)) +
   scale_y_continuous(limits = c(0, 200))
-``` 
+```
 
 #### Distribution of districts by state
 
@@ -125,12 +125,61 @@ integrated_longer <- integrated_longer |>
     mean_income = mean_income / 1000,
     owner_occupied_value = owner_occupied_value / 1000,
     population = population / 1000,
+    #Adjusting all percentages to be between 0 and 100
+    share_inperson = share_inperson * 100,
+    share_hybrid = share_hybrid * 100,
+    share_virtual = share_virtual * 100,
   )
 
 math_longer <- integrated_longer |>
-  filter(subject == 'mth')
+  filter(subject == 'mth') |>
+  filter(!is.na(total_revenue))
+  
 ```
 
+### Missing Data
+
+```{r}
+#| label: missing-data-analysis
+
+integrated_ds |> 
+  select(gys_mn_2019_ol) |>
+  summary()
+
+integrated_ds |>
+  filter(!is.na(total_fed_revenue)) |>
+  select(gys_mn_2019_ol) |>
+  summary()
+
+integrated_ds |>
+  filter(is.na(total_fed_revenue)) |>
+  group_by(stateabb) |>
+  count()
+
+integrated_ds |>
+  group_by(stateabb) |>
+  count()
+
+integrated_ds |>
+  filter(!is.na(total_fed_revenue)) |>
+  group_by(stateabb) |>
+  count()
+
+  
+```
+
+Interpretations
+
+-   We see that the states with missing revenue data are disporportionately from Arkansas, Mississippi, and Nevada
+-   Because of this, I can't perform mean imputation by state
+-   As such, I will make a note of this moving forward
+-   I also confirmed all other columns have data for all rows
+
+#### Converting to Categorical?
+
+One idea is to convert revenue to a categorical variable to account for the missing data (e.g. "Not Reported", "0-X", "X-Y", "Y-Z", "Z+")
+
+This could be a good way to account for the missing data, but it might introduce new problems since the missing data does not seem random by the state distribution and the new categorical variable may not be as informative as the continuous variable.
 
 ## Modeling
 
@@ -146,18 +195,17 @@ umm_model <- lmer(gys_mn~ 1 + (1|sedaadmin),
 
 summary(umm_model)
 
-icc <- 1.6162 / (1.6162 + 0.1475)
-
+icc <- 1.5087 / (1.5087 +  0.1399)
+icc
 ```
-
 
 Interpretations
 
-- The intercept for fixed effects is -0.107 which represents the mean math score across all school districts and years in terms of standard deviations from the 2019 national average.
+-   The intercept for fixed effects is 0.086 which represents the mean math score across all school districts and years in terms of standard deviations from the 2019 national average.
 
-- The std dev for the random effect intercept is 1.271 which represents the variablity in math scores across school districts from the overall mean (-0.107)
+-   The std dev for the random effect intercept is 1.228 which represents the variablity in math scores across school districts from the overall mean.
 
-- The std dev for the random effect residual is 0.384 which represents the year to year variability within a school district
+-   The std dev for the random effect residual is 0.374 which represents the year to year variability within a school district
 
 #### Unconditional Growth
 
@@ -211,13 +259,13 @@ summary(ugmtip_model)
 
 Interpretations
 
-- The intercept is 0.126 which represents the mean math score across all school districts in 2019 that had 0% in person.
+-   The intercept is 0.143 which represents the mean math score across all school districts in 2019 that had 0% in person.
 
-- The coefficient for yearsince2019 is -0.117 which represents the average change in math scores per year across 0% in person school districts.
+-   The coefficient for yearsince2019 is -0.129 which represents the average change in math scores per year across 0% in person school districts.
 
-- The coefficient for share_inperson is -0.001 which represents the average difference in math scores for every 100% increase in the share of students attending in-person classes in 2019.
+-   The coefficient for share_inperson is 0.004 which represents the average difference in math scores for every 1% increase in the share of students attending in-person classes in 2019.
 
-- The coefficient for share_inperson:yearsince2019 is 0.038 which represents the average change in the effect of share_inperson on math scores per year.
+-   The coefficient for share_inperson:yearsince2019 is 0.0006 which represents the average change in the effect of share_inperson on math scores per year.
 
 ```{r}
 #| label: unconditional-growth-model-time-hybrid
@@ -232,13 +280,11 @@ summary(ugmth_model)
 
 Interpretations
 
-- The intercept is 0.012 which represents the mean math score across all school districts in 2019 that had 0% hybrid.
+-   The intercept is 0.319 which represents the mean math score across all school districts in 2019 that had 0% hybrid.
 
-- The coefficient for yearsince2019 is -0.099 which represents the average change in math scores per year across 0% hybrid school districts.
+-   The coefficient for yearsince2019 is -0.0834 which represents the average change in math scores per year across 0% hybrid school districts.
 
-- The coefficient for share_hybrid is 0.327 which represents the average difference in math scores for every 100% increase in the share of students attending hybrid classes.
-
-- The coefficient for share_hybrid:yearsince2019 is -0.001 which represents the average change in the effect of share_hybrid on math scores per year.
+-   The coefficient for share_hybrid:yearsince2019 is -0.0004 which represents the average change in the effect of share_hybrid on math scores per year.
 
 ```{r}
 #| label: unconditional-growth-model-time-virtual
@@ -253,30 +299,13 @@ summary(ugmtv_model)
 
 Interpretations
 
-- The intercept is 0.215 which represents the mean math score across all school districts in 2019 that had 0% virtual.
+-   The intercept is 0.525 which represents the mean math score across all school districts in 2019 that had 0% virtual.
 
-- The coefficient for yearsince2019 is -0.088 which represents the average change in math scores per year across 0% virtual school districts.
+-   The coefficient for yearsince2019 is -0.0828 which represents the average change in math scores per year across 0% virtual school districts.
 
-- The coefficient for share_virtual is -0.43 which represents the average difference in math scores for every 100% increase in the share of students attending virtual classes.
+-   The coefficient for share_virtual is -0.013 which represents the average difference in math scores for every 100% increase in the share of students attending virtual classes.
 
-- The coefficient for share_virtual:yearsince2019 is 0.055 which represents the average change in the effect of share_virtual on math scores per year.
-
-```{r}
-#| label: unconditional-growth-model-time-virtual-hybrid
-
-ugmtvh_model <- lmer(
-  gys_mn~ yearsince2019 + share_hybrid + share_virtual + share_virtual:yearsince2019 + (yearsince2019|sedaadmin), 
-  data = math_longer
-  )
-
-summary(ugmtvh_model)
-```
-
-Interpretations
-
-- Modify to use the combined in-person + hybrid term
-- Account for missing data (school districts without data)
-
+-   The coefficient for share_virtual:yearsince2019 is -0.001 which represents the average change in the effect of share_virtual on math scores per year.
 
 ```{r}
 #| label: unconditional-growth-model-time-modality-revenue
@@ -292,56 +321,17 @@ summary(ugmtmr_model)
 
 Interpretations
 
-- The intercept is 0.4547 which represents the mean math score across all school districts in 2019 that had 0% virtual and "no funding"
+-   The intercept is 0.548 which represents the mean math score across all school districts in 2019 that had 0% virtual and "no funding"
 
-- The coefficient for yearsince2019 is -0.0831 which represents the average change in math scores per year across 0% virtual and "no funding" school districts
+-   The coefficient for yearsince2019 is -0.0817 which represents the average change in math scores per year across 0% virtual and "no funding" school districts
 
-- The coefficient for share_virtual is -0.6100 which represents the average difference in math scores for every 100% increase in the share of students attending virtual classes
+-   The coefficient for share_virtual is -0.011 which represents the average difference in math scores for every 100% increase in the share of students attending virtual classes
 
-- The coefficient for total_fed_revenue is -0.006 which represents the average difference in math scores for every $1,000,000 increase in total revenue
+-   The coefficient for total_fed_revenue is -0.005 which represents the average difference in math scores for every \$1,000,000 increase in total revenue
 
-- The coefficient for share_virtual:yearsince2019 is -0.056 which represents the average change in the effect of share_virtual on math scores per year
+-   The coefficient for share_virtual:yearsince2019 is -0.001 which represents the average change in the effect of share_virtual on math scores per year
 
-- The coefficient for total_fed_revenue:yearsince2019 is -.0003 which represents the average change in the effect of total_fed_revenue on math scores per year
-
-### Missing Data
-
-```{r}
-#| label: missing-data-analysis
-
-math_longer |> 
-  select(gys_mn) |>
-  summary()
-
-math_longer |>
-  filter(!is.na(total_fed_revenue)) |>
-  select(gys_mn) |>
-  summary()
-
-math_longer |>
-  filter(is.na(total_fed_revenue)) |>
-  group_by(stateabb) |>
-  count()
-
-math_longer |>
-  group_by(stateabb) |>
-  count()
-  
-```
-
-
-Interpretations
-
-- We see that the states with missing revenue data are disporportionately from Arkansas, Mississippi, and Nevada
-- Because of this, I can't perform mean imputation by state
-- As such, I will strongly consider not using the revenue data or make a note of this
-- I also confirmed all other columns have data for all rows
-
-#### Converting to Categorical?
-
-One idea is to convert revenue to a categorical variable to account for the missing data (e.g. "Not Reported", "0-X", "X-Y", "Y-Z", "Z+")
-
-This could be a good way to account for the missing data, but it might introduce new problems since the missing data does not seem random by the state distribution and the new categorical variable may not be as informative as the continuous variable.
+-   The coefficient for total_fed_revenue:yearsince2019 is -0.00026 which represents the average change in the effect of total_fed_revenue on math scores per year
 
 ### Evaluation
 
@@ -392,7 +382,7 @@ summary(ugmtmr_model)
 
 ```
 
-### 3 Level 
+### 3 Level
 
 #### Unconditional Means
 
@@ -407,10 +397,10 @@ summary(umm3_model)
 
 Interpretations
 
-- Mean across all school-districts and counties: -0.204
-- Variance over time within school districts: 0.148
-- Variance between school districts in the same county: 1.123
-- Variance between counties: 0.455
+-   Mean across all school-districts and counties: -0.204
+-   Variance over time within school districts: 0.148
+-   Variance between school districts in the same county: 1.123
+-   Variance between counties: 0.455
 
 #### Unconditional Growth
 
@@ -430,10 +420,8 @@ summary(ugm3_model)
 
 Interpretations
 
-- Mean in 2019: 0.033
-- Mean yearly change score: -0.101
-
-
+-   Mean in 2019: 0.033
+-   Mean yearly change score: -0.101
 
 ```{r}
 #| label: unconditional-growth-model-all-fixed
@@ -480,18 +468,15 @@ summary(ugm3ALL_model)$coefficients |>
 
 Variables by Category
 
-- School Modality
-  - `share_inperson`
-  - `share_hybrid`
-  - `share_virtual`
-  
+-   School Modality
+    -   `share_inperson`
+    -   `share_hybrid`
+    -   `share_virtual`
+
 ```{r}
 #| label: correlation-check-modality
 
-math_longer_rev <- math_longer |>
-  filter(!is.na(total_revenue))
-
-cor(math_longer_rev |>
+cor(math_longer |>
   select(
     share_inperson,
     share_hybrid,
@@ -503,28 +488,27 @@ cor(math_longer_rev |>
 
 We see that share_inperson and share_hybrid are highly correlated, so we will remove share_hybrid from the model. share_virtual is not as correlated with the other two, so we will keep it in the model.
 
-  
-- Revenue/Funding
-  - `membership`
-  - `total_revenue`
-  - `total_fed_revenue`
-  - `total_state_revenue`
-  - `total_local_revenue`
-  - `revenue_per_student`
-  - `inst_salaries_per_student`
-  - `total_salaries`
-  - `total_instructional_salaries`
-  - `total_esser1`
-  - `total_esser2`
-  - `esser_per_student`
-  - `total_geer1`
-  - `total_geer2`
-  - `geer_per_student`
-  
+-   Revenue/Funding
+    -   `membership`
+    -   `total_revenue`
+    -   `total_fed_revenue`
+    -   `total_state_revenue`
+    -   `total_local_revenue`
+    -   `revenue_per_student`
+    -   `inst_salaries_per_student`
+    -   `total_salaries`
+    -   `total_instructional_salaries`
+    -   `total_esser1`
+    -   `total_esser2`
+    -   `esser_per_student`
+    -   `total_geer1`
+    -   `total_geer2`
+    -   `geer_per_student`
+
 ```{r}
 #| label: correlation-check-revenue
 
-cor(math_longer_rev |>
+cor(math_longer |>
   select(
     membership,
     total_revenue,
@@ -546,18 +530,18 @@ cor(math_longer_rev |>
 ```
 
 We see that membership and the total salary variables are highly correlated with all the revenue variables, so we will remove those from the model. All the revenues variables are also highly correlated with each other, so we will just keep one for our model (total_revenue). The variables that were aggregated per student (revenue_per_student, inst_salaries_per_student, esser_per_student, geer_per_student) are not strongly correlated with many variables. We will keep all of these variables and remove the emergency funding variables.
-  
-- Social Capital
-  - `County_Level_Index`
-  - `Family_Unity`
-  - `Community_Health`
-  - `Institutional_Health`
-  - `Collective_Efficacy`
-  
+
+-   Social Capital
+    -   `County_Level_Index`
+    -   `Family_Unity`
+    -   `Community_Health`
+    -   `Institutional_Health`
+    -   `Collective_Efficacy`
+
 ```{r}
 #| label: correlation-check-social
 
-cor(math_longer_rev |>
+cor(math_longer |>
   select(
     County_Level_Index,
     Family_Unity,
@@ -569,23 +553,23 @@ cor(math_longer_rev |>
 ```
 
 The County Level Index is calculated as a linear combination of the other variables, so we will remove the other variables from the model. This is why we see high correlation among all the variables.
-  
-- Social Factors
-  - `married_household`
-  - `married_household_children`
-  - `male_married`
-  - `female_married`
-  - `male_never_married`
-  - `female_never_married`
-  - `male_divorced`
-  - `female_divorced`
-  - `over_25_highschool_degree`
-  - `over_25_bachelors_degree`
-  
+
+-   Social Factors
+    -   `married_household`
+    -   `married_household_children`
+    -   `male_married`
+    -   `female_married`
+    -   `male_never_married`
+    -   `female_never_married`
+    -   `male_divorced`
+    -   `female_divorced`
+    -   `over_25_highschool_degree`
+    -   `over_25_bachelors_degree`
+
 ```{r}
 #| label: correlation-check-social-factors
 
-cor(math_longer_rev |>
+cor(math_longer |>
   select(
     married_household,
     married_household_children,
@@ -602,24 +586,24 @@ cor(math_longer_rev |>
 ```
 
 We see that the variables related to marital status are highly correlated with each other, so we will remove all but married_household. The variables related to education are surprisingly not highly correlated with each other, so we will keep both of those variables.
-  
-- Demographics
-  - `native_born`
-  - `only_english`
-  - `non_english`
-  - `with_computer`
-  - `with_internet`
-  - `population`
-  - `sex_ratio`
-  - `hispanic_percent`
-  - `white_percent`
-  - `black_percent`
-  - `asian_percent`
-  
+
+-   Demographics
+    -   `native_born`
+    -   `only_english`
+    -   `non_english`
+    -   `with_computer`
+    -   `with_internet`
+    -   `population`
+    -   `sex_ratio`
+    -   `hispanic_percent`
+    -   `white_percent`
+    -   `black_percent`
+    -   `asian_percent`
+
 ```{r}
 #| label: correlation-check-demographics
 
-cor(math_longer_rev |>
+cor(math_longer |>
   select(
     native_born,
     only_english,
@@ -642,16 +626,16 @@ white_percent is highly correlated with black_percent, but we will keep both of 
 
 asian_percent is also highly correlated with population, but we will keep both of these variables in the model since they are both important indicators of demographics.
 
-- Employment
-  - `no_workers`
-  - `one_worker`
-  - `employment_past_year`
-  - `unemployment`
+-   Employment
+    -   `no_workers`
+    -   `one_worker`
+    -   `employment_past_year`
+    -   `unemployment`
 
 ```{r}
 #| label: correlation-check-employment
 
-cor(math_longer_rev |>
+cor(math_longer |>
   select(
     no_workers,
     one_worker,
@@ -663,22 +647,21 @@ cor(math_longer_rev |>
 
 We see that no_workers and employment_past_year are highly correlated with each other, so we will remove employment_past_year. The other variables are not highly correlated with each other, so we will keep all of those variables.
 
-  
-- Income
-  - `median_income`
-  - `mean_income`
-  - `with_health_insurance`
-  - `poverty`
-  - `owner_occupied_value`
-  - `occupancy`
-  - `SMOC`
-  - `rent`
-  - `mortgage_percentage`
+-   Income
+    -   `median_income`
+    -   `mean_income`
+    -   `with_health_insurance`
+    -   `poverty`
+    -   `owner_occupied_value`
+    -   `occupancy`
+    -   `SMOC`
+    -   `rent`
+    -   `mortgage_percentage`
 
 ```{r}
 #| label: correlation-check-income
 
-cor(math_longer_rev |>
+cor(math_longer |>
   select(
     median_income,
     mean_income,
@@ -697,36 +680,36 @@ We see that median_income and mean_income are highly correlated with each other,
 
 median_income is highly correlated with poverty, but we will keep both of these variables in the model for the sake of interpretability since they are both important indicators of economic status.
 
-- Final List of Variables
-  - `share_virtual`
-  - `revenue_per_student`
-  - `esser_per_student`
-  - `geer_per_student`
-  - `County_Level_Index`
-  - `married_household`
-  - `over_25_highschool_degree`
-  - `over_25_bachelors_degree`
-  - `native_born`
-  - `with_computer`
-  - `population`
-  - `sex_ratio`
-  - `hispanic_percent`
-  - `white_percent`
-  - `black_percent`
-  - `asian_percent`
-  - `with_internet`
-  - `no_workers`
-  - `one_worker`
-  - `unemployment`
-  - `median_income`
-  - `with_health_insurance`
-  - `poverty`
-  - `occupancy`
-  
-```{r}
-#| label: final-variable-list
+-   Selected List of Variables
+    -   `share_virtual`
+    -   `revenue_per_student`
+    -   `esser_per_student`
+    -   `geer_per_student`
+    -   `County_Level_Index`
+    -   `married_household`
+    -   `over_25_highschool_degree`
+    -   `over_25_bachelors_degree`
+    -   `native_born`
+    -   `with_computer`
+    -   `population`
+    -   `sex_ratio`
+    -   `hispanic_percent`
+    -   `white_percent`
+    -   `black_percent`
+    -   `asian_percent`
+    -   `with_internet`
+    -   `no_workers`
+    -   `one_worker`
+    -   `unemployment`
+    -   `median_income`
+    -   `with_health_insurance`
+    -   `poverty`
+    -   `occupancy`
 
-math_filtered <- math_longer_rev |>
+```{r}
+#| label: selected-variable-list
+
+math_filtered <- math_longer |>
   select(
     gys_mn,
     yearsince2019,
@@ -745,7 +728,7 @@ math_filtered <- math_longer_rev |>
     population,
     sex_ratio,
     hispanic_percent,
-    #white_percent,
+    white_percent,
     black_percent,
     asian_percent,
     no_workers,
@@ -761,14 +744,15 @@ cor(math_filtered)
 
 ```
 
-#### New Model
+#### Finalizing Fields
 
 ```{r}
-#| label: new-model
+#| label: new-model-manually-selected-fields
 
 library(rms)
+library(broom.mixed)
 
-ugm3NEW_model <- lmer(
+ugm3NEW_model.m <- lmer(
   paste(
     "gys_mn ~",
     paste(
@@ -777,14 +761,8 @@ ugm3NEW_model <- lmer(
       ),
     "+ (yearsince2019|sedaadmin) + (0 + yearsince2019|`County Names`)"
   ),
-  data = math_longer_rev
+  data = math_longer
 )
-
-
-summary(ugm3NEW_model)
- nobs sigma logLik   AIC   BIC REMLcrit df.residual
-  <int> <dbl>  <dbl> <dbl> <dbl>    <dbl>       <int>
-1  3444 0.187 -2370. 4797. 4969.    4741.        3416
 
 
 linear_model <- lm(
@@ -794,14 +772,21 @@ linear_model <- lm(
 
 vif(linear_model)
 
+summary(ugm3NEW_model.m)
+
 ```
 
-If we filter variables with t values > 2, we see that the following variables are significant:
+```{r}
+#| label: model-comparison
+anova(ugm3ALL_model, ugm3NEW_model.m)
+```
+
+If we filter variables with t values \> 2, we see that the following variables are significant:
 
 ```{r}
 #| label: significant-variables
 
-summary(ugm3NEW_model)$coefficients |>
+summary(ugm3NEW_model.m)$coefficients |>
   as.data.frame() |>
   filter(abs(`t value`) > 2)
 ```
@@ -810,23 +795,332 @@ This closely alligns with the filtered list from the all-variables model and thi
 
 In the end we have the following variables
 
-Time
-- yearsince2019
-- yearsqrdsince2019
+##### Time
 
-School Modality
-- share_virtual
+-   yearsince2019
+    -   Coefficent is negative which is expected due to the pandemic
+-   yearsqrdsince2019
+    -   Coefficient is positive which is expected due to recovery after the pandemic
 
-Revenue/Funding
-- esser_per_student
-- geer_per_student
+##### School Modality
 
-County-Level Demographics
-- asian_percent
-- unemployment
-- median_income
+-   share_virtual
+    -   Coefficient is negative which is expected since online learning is typically not as effective as in person instruction
 
-  
+##### Revenue/Funding
 
-  
+-   esser_per_student
+    -   Coefficient is negative which is unexpected
+-   geer_per_student
+    -   Coefficient is negative which is unexpected
 
+These may be related to worse-off or worse performing schools getting more funding per student
+
+Read more on the documentation and distribution of the emergency funding. Investigate an interaction term between the funding and time.
+
+##### County-Level Demographics
+
+-   black_percent
+    -   Coefficient is positive
+-   asian_percent
+    -   Coefficient is positive
+-   unemployment
+    -   Coefficient is negative which is expected
+-   median_income
+    -   Coefficient is positive which is expected
+-   with_computer
+    -   Coefficient is negative which is unexpected
+
+```{r}
+#| label: new-model-significant-variables
+
+math_filtered <- math_longer |>
+  select(
+    gys_mn,
+    yearsince2019,
+    yearsqrdsince2019,
+    share_virtual,
+    esser_per_student,
+    geer_per_student,
+    with_computer,
+    sex_ratio,
+    black_percent,
+    asian_percent,
+    unemployment,
+    median_income,
+  )
+
+ugm3NEW_model.sv <- lmer(
+  paste(
+    "gys_mn ~",
+    paste(
+      colnames(math_filtered),
+      collapse = " + "
+      ),
+    "+ (yearsince2019|sedaadmin) + (0 + yearsince2019|`County Names`)"
+  ),
+  data = math_longer
+)
+    
+```
+
+```{r}
+#| label: new-model-significant-variables-evaluation
+
+summary(ugm3NEW_model.sv)
+anova(ugm3ALL_model, ugm3NEW_model.sv)
+anova(ugm3NEW_model.sv, ugm3NEW_model.m)
+```
+
+```{r}
+ggplot(math_filtered, aes(x = with_computer, y = gys_mn)) +
+  geom_point()
+```
+
+##### Variables to be removed
+
+-   Interesting note: black_percent and sex_ratio seem negatively correlated and removing one makes the other significant. This could be explained by how areas with higher black populations tend to have higher male incaceration rates. Going forward, I will just keep sex ratio.
+
+```{r}
+ggplot(math_filtered, aes(x = black_percent, y = sex_ratio)) +
+  geom_point() + 
+  geom_smooth(method = "lm")
+```
+
+Pick one of these to keep since when becomes significant when the other is removed (they are kind of correlated excluding some outliers)
+
+-   Consider removing `with_computer` due to unexpected negative coefficient for interpretability
+
+Note: By itself `with_computer` has a positive relationship with math score, when accounting for other terms in the model it turns negative.
+
+We also see that the variables are not really correlated with each other except for years and years squared which is to be expected.
+
+```{r}
+#| label: next-variable-list
+
+math_filtered <- math_longer |>
+  select(
+    gys_mn,
+    yearsince2019,
+    yearsqrdsince2019,
+    share_virtual,
+    esser_per_student,
+    geer_per_student,
+    with_computer,
+    sex_ratio,
+    asian_percent,
+    unemployment,
+    median_income,
+  )
+
+ugm3NEW_model.f <- lmer(
+  paste(
+    "gys_mn ~",
+    paste(
+      colnames(math_filtered),
+      collapse = " + "
+      ),
+    "+ (yearsince2019|sedaadmin)",
+    "+ (yearsince2019|`County Names`)"
+  ),
+  data = math_longer
+)
+
+
+```
+
+```{r}
+#| label: next-model-evaluation
+
+summary(ugm3NEW_model.f)
+
+anova(ugm3NEW_model.sv, ugm3NEW_model.f)
+
+glance(ugm3NEW_model.f)
+```
+
+#### Interpretations
+
+-   The intercept is -0.754 which represents the baseline of a school that is 0% virtual, 0% Asian, 0% unemployment, and has a median income of \$0 in 2019. This does not mean a whole lot since these demographics don't apply to any real school.
+
+-   The coefficient for yearsince2019 is -0.343 which represents the average change in math scores per year across all school districts. We expect to see this because the pandemic severely affected student learning and performance. There was also a lack of standardized testing in 2020 due to the pandemic.
+
+-   The coefficient for yearsqrdsince2019 is 0.068 which does not have a clean direct interpretation but it generally means that the rate of change in math scores is increasing over time. This is reflected in how we see test scores decrease from 2019 to 2022 but then increase from 2022 to 2023
+
+-   The coefficient for share_virtual is -0.017 which represents the average difference in math scores for every 1% increase in the share of students attending virtual classes in 2019. This is expected since virtual learning is typically not as effective as in-person instruction as seen by previous research on the topic.
+
+-   The coefficient for asian_percent is 0.035 which represents the average difference in math scores for every 1% increase in the Asian population in the county of a school district. This is a positive coefficient which means that a higher Asian population is associated with higher math scores. This could be due to cultural factors or other unmeasured variables. One confounding factor could be that larger asian populations typically signal more urban areas which have better performing schools.
+
+-   The coefficient for unemployment is -0.109 which represents the average difference in math scores for every 1% increase in the unemployment rate in the county of a school district. This is a negative coefficient which means that a higher unemployment rate is associated with lower math scores.
+
+-   The coefficient for median_income is 0.019 which represents the average difference in math scores for every \$1,000 increase in the median income of the county of a school district. This is a positive coefficient which means that higher median income is associated with higher math scores. This is expected since higher income areas typically have better performing schools. This is also matched with how housing in better performing school districts is typically more expensive.
+
+-   The coefficient for esser_per_student and geer_per_student are -729 and -1566 respectively. This means that for every \$1,000 increase in emergency funding per student, math scores decrease by 0.729 and 1.566 respectively. This is unintuitive but can be explained by worse performing schools getting more funding per student. GEER funding required to use 60% of the funding on Title 1 schools (those serving low-income students) while ESSER funding required 90% of the funding to be used in a similar purpose towards Title 1 schools.
+
+#### Testing Random Effects
+
+```{r}
+#| label: testing-random-effects-1
+
+ugm3NEW_model.f1 <- lmer(
+  paste(
+    "gys_mn ~",
+    paste(
+      colnames(math_filtered),
+      collapse = " + "
+      ),
+    "+ (yearsince2019|`County Names`)"
+  ),
+  data = math_longer
+)
+
+summary(ugm3NEW_model.f1)
+
+anova(ugm3NEW_model.f, ugm3NEW_model.f1)
+```
+
+This model converges and shows that removing the random effect of yearsince2019 at the district level does significantly worse than the model with the random effect. This means that the effect of yearsince2019 on math scores varies significantly across districts
+
+```{r}
+#| label: testing-random-effects-2
+
+ugm3NEW_model.f2 <- lmer(
+  paste(
+    "gys_mn ~",
+    paste(
+      colnames(math_filtered),
+      collapse = " + "
+      ),
+    "+ (yearsince2019|sedaadmin)",
+    "+ (yearsince2019|`County Names`)",
+    "+ (share_virtual|`sedaadmin`)"
+  ),
+  data = math_longer
+)
+
+```
+
+This model fails to converge, so we will not include the random effect for share_virtual. This could be due to not enough variation in the share_virtual variable to estimate a random effect.
+
+```{r}
+#| label: testing-random-effects-3
+
+ugm3NEW_model.f3 <- lmer(
+  paste(
+    "gys_mn ~",
+    paste(
+      colnames(math_filtered),
+      collapse = " + "
+      ),
+    "+ (yearsince2019|sedaadmin)",
+    "+ (yearsince2019|`County Names`)",
+    "+ (asian_percent|sedaadmin)"
+  ),
+  data = math_longer
+)
+
+summary(ugm3NEW_model.f3)
+
+anova(ugm3NEW_model.f, ugm3NEW_model.f3)
+
+```
+
+This model converges! The anova test also shows that the more complex model is significantly better than the simpler model without the random effect for asian_percent. This means that the effect of asian_percent on math scores varies significantly across school districts.
+
+The correlation between the slope and intercept of the random effect for asian_percent is also 1.00 which means that school districts with higher math scores due to asian_percent also have higher math scores in general.
+
+-   Note: asian_percent came from county-aggregated data but the random effect of this variable at the county level is not significant.
+
+```{r}
+#| label: testing-random-effects-4
+
+ugm3NEW_model.f4 <- lmer(
+  paste(
+    "gys_mn ~",
+    paste(
+      colnames(math_filtered),
+      collapse = " + "
+      ),
+    "+ (yearsince2019|sedaadmin)",
+    "+ (yearsince2019|`County Names`)",
+    "+ (unemployment|sedaadmin)"
+  ),
+  data = math_longer
+)
+
+summary(ugm3NEW_model.f4)
+
+anova(ugm3NEW_model.f, ugm3NEW_model.f4)
+```
+
+This model also converges and the anova test shows that the more complex model is not signifcantly better than the simpler model without the random effect for unemployment. This means that the effect of unemployment on math scores does not vary significantly across school districts.
+
+```{r}
+#| label: testing-random-effects-5
+
+ugm3NEW_model.f5 <- lmer(
+  paste(
+    "gys_mn ~",
+    paste(
+      colnames(math_filtered),
+      collapse = " + "
+      ),
+    "+ (yearsince2019|sedaadmin)"
+  ),
+  data = math_longer
+)
+
+summary(ugm3NEW_model.f5)
+
+anova(ugm3NEW_model.f, ugm3NEW_model.f5)
+```
+
+This model converges and shows that removing the random effect of yearsince2019 at the county level does significantly worse than the model with the random effect. This means that the effect of yearsince2019 on math scores varies significantly across counties.
+
+```{r}
+#| label: testing-random-effects-6
+
+ugm3NEW_model.f6 <- lmer(
+  paste(
+    "gys_mn ~",
+    paste(
+      colnames(math_filtered),
+      collapse = " + "
+      ),
+    "+ (yearsince2019|sedaadmin)",
+    "+ (yearsince2019|`County Names`)",
+    "+ (median_income|sedaadmin)"
+  ),
+  data = math_longer
+)
+
+summary(ugm3NEW_model.f6)
+
+anova(ugm3NEW_model.f, ugm3NEW_model.f6)
+```
+
+This model converges and the anova test shows that the more complex model is significantly better than the simpler model without the random effect for median_income. This means that the effect of median_income on math scores varies significantly across school districts.
+
+```{r}
+#| label: testing-random-effects-7
+
+ugm3NEW_model.f7 <- lmer(
+  paste(
+    "gys_mn ~",
+    paste(
+      colnames(math_filtered),
+      collapse = " + "
+      ),
+    "+ (yearsince2019|sedaadmin)",
+    "+ (yearsince2019|`County Names`)",
+    "+ (with_computer|sedaadmin)"
+  ),
+  data = math_longer
+)
+
+summary(ugm3NEW_model.f7)
+
+anova(ugm3NEW_model.f, ugm3NEW_model.f7)
+```
+
+This model converges but the anova test shows that the more complex model is not significantly better than the simpler model without the random effect for with_computer. This means that the effect of with_computer on math scores does not vary significantly across school districts.
