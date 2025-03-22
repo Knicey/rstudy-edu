@@ -10,15 +10,41 @@ bibliography: references.bib
 
 ## Project Background
 
-The goal of this project is to model academic performance in school districts across the United States through various demographic and socioeconomic factors. The data sources include the American Community Survey (ACS), the Educational Opportunity Project, the Longitudinal School Demographic Dataset (LSDD), the Common Core of Data (CCD), and the Census. The data will be joined by school district or county to create a comprehensive dataset for analysis.
+The goal of this project is to model academic performance in school districts across the United States through various demographic and socioeconomic factors. The data sources include the American Community Survey (ACS), the Educational Opportunity Project, the Longitudinal School Demographic Dataset (LSDD), the Common Core of Data (CCD), and the Census. The data was joined by school district and county to create a comprehensive dataset for analysis.
 
-I first explored the relationship between a few socioeconomic factors and academic performance in school districts. I created a dashboard to visualize my findings and developed some simple linear regression models to explore the relationship between these factors and academic performance.
+I first explored the relationship between a few socioeconomic factors and academic performance in school districts as they are a standard geographical unit for school administration. I created a dashboard to visualize my findings and developed some simple linear regression models to explore the relationship between these factors and academic performance.
 
-Next, I plan to expand on this project by incorporating more data sources and more advanced modeling techniques. I also plan to overhaul the joining process of datasets to preserve more records and develop a more comprehensive dataset for analysis.
+Due to a lack of datasets aggregated to the school district level, this project focused on expanding my earlier work by incorporating data sources with county level statistics and an improved method for joining datasets to preserve more records and develop a more comprehensive dataset for analysis. Furthermore, I incorporated hierarchical modeling to account for the nested structure of the data and explored the impact of various predictors on academic performance.
+
+## Literature Review
+
+The COVID-19 pandemic has had a significant impact on education, with many students experiencing disruptions in learning due to school closures and shifts to remote learning. Several studies have shown that academic performance declined during the pandemic and students from lower income areas were disproportionately affected. For example, @irwin examined the disruption in postsecondary education plans due to the pandemic and found that lower-income families were more likely to experience disruptions in learning from canceled classes. The Educational Opportunity Project (EOP) by Stanford University created a scale for measuring academic performance across all school districts in the US and found that disadvantaged students suffered larger learning loss @fahle2023. A followup study by the EOP also found that test scores recovered from 2022 to 2023 but that nonpoor students had greater gains than poor students, further widening the achievement gap between the two groups @fahle2024. This project utilizes the dataset aggregated and curated by the EOP to model academic performance across school districts and years.
 
 ## Methodology
 
 The first step of my project was to identify the datasets that I would be using for this project. I started with only looking at datasets aggregated by school district as that would be the most granular level relevant to my research question. I started with the American Community Survey (ACS), the Educational Opportunity Project, the Common Core of Data (CCD), and the Census. I reviewed the data dictionaries for each dataset to understand the variable encoding and the extent of the data. I also reviewed the data sources to understand the data collection process and the limitations of the data.
+
+### Data Resources
+
+The core dataset is from the Educational Opportunity Project (citation) and contains academic performance data across school districts. The academic performance varaibles represent difference in grade level relative to the 2019 national average. This dataset contains academic performance variables from 2016 to 2023 aggregated across different student subgroups and subjects within 7390 school districts.
+
+I then identified a dataset from the Census that contains mappings from school district to county. Counties typically contain at least one school district and often several. This dataset contains the mappings for 18998 school districts.
+
+The next core datasets were the Data Profiles (DP) from the American Community Survey (ACS). These DPs contain a selection of features from various ACS datasets that are curated to provide a consistent set of features across counties. These datasets contain demographic and socioeconomic features such as income, poverty, housing, education, and employment. These datasets are aggregated at the county level and represent the 2018 to 2022 5-Year estimated statistics for 3222 counties
+
+I did attempt to use ACS datasets that were aggregated by school district but found that the data was very sparse and did not provide enough information for analysis.
+
+The Common Core of Data (CCD) dataset contains information on membership, salaries, and revenue from local, state, and federal sources. Additionly, this dataset contains COVID emergency relief funding from the Elementary and Secondary School Emergency Relief Fund (ESSER), which was allotted funding through the Coronavirus Aid, Relief, and Economic Security (CARES) Act for the purposes of education stabilization during the pandemic. This dataset also contains funding statistics from the Governor's Emergency Education Relief Fund (GEER), which was also allotted from the CARES act and was intended to provide emergency support to schools and higher education institutions. Both of these emergency funds also had extensions (ESSER II and GEER II respectively) that provided through the Coronavirus Response and Relief Supplemental Appropriations (CRRSA) Act
+
+and the Governor's Emergency Education Relief Fund (GEER). This dataset is aggregated at the school district level and contains data for 19572 school districts for the 2022 fiscal year.
+
+The Covid School Data Hub (CSDH) dataset contains self-reported data from state education agencies on learning modality and enrollment. This dataset is aggregated at the school district level and contains data for 14967 school districts for the 2020-2021 school year.
+
+The Social Capital Project (SCP) dataset contains information on social capital indicators such as family structure, religious attendance, and social trust. These indicators are measured using data such as births per married woman, religious congregations, voting turnout, and violent crimes per population. This dataset is aggregated at the county level and contains data for 3142 counties generated in 2017.
+
+While these datasets come from a 5-year timeframe, these are variables that are relatively stable over time and are not expected to change significantly within this timeframe. The academic performance data is the most dynamic and will be the focus of the analysis. The other datasets will be used to provide context and additional features for the analysis. Additionally, many of these datasets will have fields that are highly correlated with each other and will need to be pruned down to a more manageable set of features.
+
+### Data Curation
 
 I first joined the datasets solely by school district name. This was a simple join that matched the exact names of the school districts. However, this method had issues as many school districts had different names in different datasets due to no common naming convention. This would result in many records not being matched and a loss of data.
 
@@ -37,7 +63,7 @@ String distance is a metric that calculates the number of character changes need
 This is an example of a dataset joined between my academic performance data and a dataset from the CCD. Using these string comparison metrics, I was able to preserve many records that would have been unmatched if I performed a direct name join. It is especially noticeable with abbreviated words that these metrics help to identify matches like with "Heights" being reduced to "Hts." or "Community" being abbreviated to "Com" as shown below. Additional common abbreviations found in the school district names are "Saint" written as "St." and cardinal directions only represented by the first letter.
 
 | seda_district | ccd_district | dist | jaccard |
-|----|----|----|----|
+|------------------|------------------|------------------|------------------|
 | Beaverton Rural Schools | Beaverton Schools | 6 | 0.2727273 |
 | North Daviess Community Schools | North Daviess Com Schools | 6 | 0.2580645 |
 | Southern Wells Community Schools | Southern Wells Com Schools | 6 | 0.2580645 |
@@ -60,8 +86,430 @@ By joining datasets by exact district name, I would have only had 4441 records w
 
 Through district name joining I was only able to match about 250 school districts with ACS income data. However, using the fuzzy matching techniques, I was able to match 281 school districts. This is a 12% increase in the number of records that were matched.
 
-Early on in my project, I only selected datasets that were aggregated by school district and it unfortunately did not prove fruitful as many of the ACS datasets I investigated had very limited data on school districts. This resulted in poor record retention for future dataset merging in addition to reduced modeling data as demonstrated by the ACS income dataset. I transitioned to identifying the counties for school districts in the academic performance dataset and then joining the datasets by county. This proved to be much more successful as I was able to use many ACS Data Profiles (DP) datasets which are a selection of curated features from various ACS datasets that have greater consistency in data. This allowed me to retain more records and have a more comprehensive dataset for analysis.
+Early on in my project, I only selected datasets that were aggregated by school district and it unfortunately did not prove fruitful as many of the ACS datasets I investigated had very limited data on school districts. This resulted in poor record retention for future dataset merging in addition to reduced modeling data as demonstrated by the ACS income dataset. I transitioned to identifying the counties for school districts in the academic performance dataset and then joining the datasets by county. This proved to be much more successful as I was able to use many ACS Data Profiles (DP) datasets which are a selection of curated features from various ACS datasets that have greater consistency in data. This allowed me to retain more records and have a more comprehensive dataset for analysis. Only two datasets had sufficient coverage at the school district level, the CCD and the CSDH datasets.
 
-The new comprehensive dataset is much larger and contains more features than the previous dataset. However, the loss of granularity from school district to county may have an impact on the accuracy of the models. I will need to investigate this further in my modeling phase and keep this in mind when interpreting the results.
+The new comprehensive dataset is much larger and contains more features than the previous dataset. However, the loss of granularity from school district to county may have an impact on the accuracy of the modeling. I keep this in mind throughout my modeling phase and weigh this in when interpreting the results.
+
+### Integrated Dataset EDA
+
+```{r}
+#| message: false
+#| warning: false
+#| include: false
+library(tidyverse)
+library(lme4)
+library(broom.mixed)
+integrated_ds <- readr::read_csv('data/IntegratedDataset.csv')
+```
+
+After I created the integrated dataset, I needed to understand the distributions and relationships between the features. I used the `ggplot2` [@ggplot2] package to create histograms, scatter plots, and correlation matrices to understand the data better. I also used the `dplyr` [@dplyr] package for data manipulation and summarization.
+
+The first step was visualizing math scores across school districts over time. I created several histograms that showed the distribution of math scores across school districts for each year contained in the data.
+
+```{r}
+#| label: data-score-distribution
+
+math_scores <- integrated_ds |>
+  filter(subject == 'mth')
+
+ggplot(math_scores, aes(x = gys_mn_2019_ol)) +
+  geom_histogram(fill = "skyblue", color = "black", bins = 30) +
+  labs(title = "Distribution of Math Scores in 2019", subtitle = "Standard deviations away from 2019 national average", x = "Math Score", y = "Frequency") +
+  scale_x_continuous(limits = c(-5, 5)) +
+  scale_y_continuous(limits = c(0, 200))
+
+ggplot(math_scores, aes(x = gys_mn_2022_ol)) +
+  geom_histogram(fill = "skyblue", color = "black", bins = 30) +
+  labs(title = "Distribution of Math Scores in 2022", subtitle = "Standard deviations away from 2019 national average", x = "Math Score", y = "Frequency") +
+  scale_x_continuous(limits = c(-5, 5)) +
+  scale_y_continuous(limits = c(0, 200))
+
+ggplot(math_scores, aes(x = gys_mn_2023_ol)) +
+  geom_histogram(fill = "skyblue", color = "black", bins = 30) +
+  labs(title = "Distribution of Math Scores in 2023", subtitle = "Standard deviations away from 2019 national average", x = "Math Score", y = "Frequency") +
+  scale_x_continuous(limits = c(-5, 5)) +
+  scale_y_continuous(limits = c(0, 200))
+```
+
+The distribution of math scores is noticeably shifted to the left in 2022 and 2023 compared to 2019. This indicates that the average math scores (in terms of standard deviations from the 2019 national average) across school districts decreased in this time period. This is consistent with the findings of other research that has shown a decline in academic performance during the COVID-19 pandemic.
+
+The next step was to visualize the geographic distribution of my dataset. The simplest way to do this was examining the spread of school disticts by state.
+
+```{r}
+#| label: data-state-distribution
+
+ggplot(math_scores, aes(x = stateabb)) +
+  geom_bar(fill = "skyblue", color = "black") +
+  labs(title = "Distribution of Districts by State", x = "State", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+This plot shows that the dataset only contains school districts from 13 states. Additionally, the data is sourced heavily from Michigan and Wisconsin. This is a limitation of the dataset and may impact the generalizability of the results to other states.
+
+This dataset also introduced new types of data of interest such as the Social Capital Index from the Social Capital Project dataset. This index is a composite measure of social capital that includes indicators such as family structure, religious attendance, social cohesion, and institutional trust. I wanted to explore the relationship between this index and academic performance.
+
+```{r}
+#| label: data-social-capital
+
+ggplot(math_scores, aes(x = `County_Level_Index`, y = gys_mn_2019_ol)) +
+  geom_point()
+```
+
+This scatter plot shows a weak positive relationship between the social capital index and math scores in 2019. This suggests that school districts with higher social capital tend to have higher math scores. This relationship will be explored further in the modeling phase.
+
+### Modeling
+
+#### Preparation
+
+I first transformed the dataset into a long format using the pivot_longer() function. This allowed me to convert the wide-format data on yearly math scores into a format suitable for longitudinal modeling.
+
+Next, I created new variables to facilitate trend analysis. I calculated the number of years since 2019 `yearsince2019` and its square (yearsqrdsince2019) to account for potential nonlinear trends over time as there is a general increase in test scores from 2022 to 2023. To standardize the scale of financial variables and put variables on a more similar scale, I converted all revenue and salary figures from raw values into millions of dollars. I also calculated per-student revenue and salaries by dividing total figures by student membership counts as school financial and membership variables had extremely high correlation with each other. Additionally, key socioeconomic metrics such as median income, mean income, and owner-occupied property values were scaled by dividing by 1,000. Percentages for instructional modes (in-person, hybrid, and virtual) were adjusted to range from 0 to 100 for better interpretability.
+
+```{r}
+integrated_longer <- integrated_ds |>
+  pivot_longer(cols = starts_with("gys_mn"), names_to = "year", values_to = "gys_mn") |>
+  mutate(year = str_remove(year, "gys_mn_")) |>
+  mutate(year = str_remove(year, "_ol")) |>
+  mutate(year = as.numeric(year)) 
+
+integrated_longer <- integrated_longer |>
+  mutate(
+    yearsince2019 = year - 2019,
+    yearsqrdsince2019 = yearsince2019^2,
+    total_revenue = total_revenue / 1000000,
+    total_fed_revenue = total_fed_revenue / 1000000,
+    total_state_revenue = total_state_revenue / 1000000,
+    revenue_per_student = total_revenue / membership,
+    total_salaries = total_salaries / 1000000,
+    total_instructional_salaries = total_instructional_salaries / 1000000,
+    inst_salaries_per_student = total_instructional_salaries / membership,
+    total_esser1 = total_esser1 / 1000000,
+    total_esser2 = total_esser2 / 1000000,
+    total_geer1 = total_geer1 / 1000000,
+    total_geer2 = total_geer2 / 1000000,
+    esser_per_student = (total_esser1 + total_esser2) / membership,
+    geer_per_student = (total_geer1 + total_geer2) / membership,
+    median_income = median_income / 1000,
+    mean_income = mean_income / 1000,
+    owner_occupied_value = owner_occupied_value / 1000,
+    population = population / 1000,
+    #Adjusting all percentages to be between 0 and 100
+    share_inperson = share_inperson * 100,
+    share_hybrid = share_hybrid * 100,
+    share_virtual = share_virtual * 100,
+  )
+
+math_longer <- integrated_longer |>
+  filter(subject == 'mth') |>
+  filter(!is.na(total_revenue))
+```
+
+To ensure the dataset's integrity during modeling, rows containing missing revenue data were excluded. Analysis of this missing revenue data showed that this exclusion disproportionately affected districts in Arkansas, Mississippi, and Nevada. Due to this non-random pattern, standard imputation techniques such as mean imputation by state were deemed unsuitable. An alternative approach considered converting revenue data into categorical ranges (e.g., "Not Reported," "0-X," etc.), though this approach risked reducing the informative value of the continuous revenue variable.
+
+```{r}
+integrated_ds |>
+  filter(is.na(total_fed_revenue)) |>
+  group_by(stateabb) |>
+  count()
+
+integrated_ds |>
+  group_by(stateabb) |>
+  count()
+
+integrated_ds |>
+  filter(!is.na(total_fed_revenue)) |>
+  group_by(stateabb) |>
+  count()
+```
+
+#### Initial Two Level Modeling
+
+To get myself familiarized with the procdure for hierachical modeling, I started with fitting two unconditional models: an unconditional means model and an unconditional growth model. These models were helpful in understanding the variation in math scores across school districts and over time.
+
+##### Unconditional Means Model
+
+The unconditional means model evaluates the variation in math scores across school districts and over time without including any predictors. The model is specified as:
+
+$$
+Y_{ij} = \alpha_0 + \mu_i + \epsilon_{ij}
+$$
+
+where $Y_{ij}$ is the math score for school district $i$ in year $j$, $\alpha_0$ is the overall mean math score, $\mu_i$ is the random effect for school district $i$, and $\epsilon_{ij}$ is the residual error.
+
+```{r}
+#| label: unconditional-means-model
+
+umm_model <- lmer(gys_mn~ 1 + (1|sedaadmin), 
+                  data = math_longer)
+
+summary(umm_model)
+
+icc <- 1.5087 / (1.5087 +  0.1399)
+icc
+```
+
+The model output produced an intercept of 0.086, representing the mean math score across all districts and years (in terms of standard deviations from the 2019 national average). The variance components were:
+
+Between-district variance = 1.5087 Within-district variance = 0.1399
+
+We can calculate the intraclass correlation coefficient (ICC) as the proportion of total variance due to between-district variance:
+
+$$
+ICC = \frac{\text{Between-district variance}}{\text{Between-district variance} + \text{Within-district variance}} = \frac{1.5087}{1.5087 + 0.1399} = 0.915
+$$
+
+This indicates that 91.5% of the total variance in math scores is due to differences between school districts.
+
+##### Unconditional Growth Model
+
+The unconditional growth model (UGM) extends the unconditional means model by including a linear time component `year` to estimate how math scores change over time:
+
+$$
+Y_{ij} = \alpha_0 + \alpha_1 \times \text{yearsince2019} + \mu_i + \epsilon_{ij}
+$$
+
+where $\alpha_1$ is the fixed effect of time on math scores.
+
+```{r}
+#| label: unconditional-growth-model
+
+ugm_model <- lmer(gys_mn~ yearsince2019 + (1|sedaadmin), 
+                  data = integrated_longer)
+
+summary(ugm_model)
+```
+
+The model yielded -0.09 as the coefficient for year, suggesting that math scores have been declining over time. The variance components were similar to the UMM model:
+
+Between-district variance = 1.575 Within-district variance = 0.118
+
+Next I created an additional model that incorporated a county-level index (County_Level_Index) as a fixed effect to capture regional differences:
+
+Equation currently has rendering issues\~
+
+```{r}
+#| label: unconditional-growth-model-county
+
+ugmc_model <- lmer(
+  gys_mn~ year + `County_Level_Index` + (1|sedaadmin), 
+  data = integrated_longer
+  )
+
+summary(ugmc_model)
+
+anova(ugm_model, ugmc_model)
+```
+
+The model output showed that the social capital index term was positive. Furthermore, the anova test showed that the inclusion of the county-level index significantly improved the model fit. The AIC and BIC both dropped considerably along with a very small p-value, indicating a better fit with the additional fixed effect.
+
+I then introduced my quadratic term for time to account for nonlinear trends in math scores over time:
+
+$$
+Y_{ij} = \alpha_0 + \alpha_1 \times \text{yearsince2019} + \alpha_2 \times \text{yearsince2019}^2 + \mu_i + \epsilon_{ij}
+$$
+
+```{r}
+#| label: unconditional-growth-model-year-yearsqrd
+
+ugmy2_model <- lmer(
+  gys_mn~ yearsince2019 + yearsqrdsince2019 + (1|sedaadmin), 
+  data = integrated_longer
+  )
+
+summary(ugmy2_model)
+
+anova(ugm_model, ugmy2_model)
+```
+
+The model output in this case showed that the quadratic term for time was positive while the linear term was negative. This is consistent with the general trend of math scores decreasing from 2019 to 2022 and then increasing from 2022 to 2023. The anova test further showed that the quadratic term significantly improved the model fit.
+
+I then explored the effect of learning modality on math scores by including the percentage of students in virtual learning as a fixed effect in the model:
+
+Equation has rendering issues
+
+```{r}
+#| eval: false
+#| include: false
+
+"Y_{ij} = \alpha_0 + \alpha_1 \times \text{yearsince2019} + \alpha_2 \times \text{share_virtual} + \alpha_3 \times (\text{share_virtual} \times \text{yearsince2019}) + \mu_i + \epsilon_{ij}"
+
+```
+
+```{r}
+#| label: time-virtual-model
+
+ugmtv_model <- lmer(
+  gys_mn~ yearsince2019 + share_virtual + share_virtual:yearsince2019 + (yearsince2019|sedaadmin), 
+  data = math_longer
+  )
+
+summary(ugmtv_model)
+```
+
+The model output showed that the percentage of students in virtual learning had a negative effect on math scores. The interaction term between virtual learning and time was also negative, indicating that the negative effect of virtual learning on math scores increased over time.
+
+Models were then evaluated by AIC and BIC using anova to determine if the additional fixed effects significantly improved the model fit. The models with the additional fixed effects had lower AIC and BIC values and the anova tests showed that certain additional fixed effects significantly improved the model fit.
+
+#### Multilevel Hierachical Modeling
+
+I then moved on to fitting a three-level hierarchical model to account for the nested structure of the data. I have data on the school district and county level, and I wanted to account for the variation at each level.
+
+##### Unconditional Means Model
+
+Revising my unconditional means model to account for county-level variation:
+
+$$
+Y_{ijk} = \alpha_0 + \mu_i + \tau_j + \epsilon_{ijk}
+$$
+
+where $Y_{ijk}$ is the math score for school district $i$ in county $j$ in year $k$, $\alpha_0$ is the overall mean math score, $\mu_i$ is the random effect for school district $i$, $\tau_j$ is the random effect for county $j$, and $\epsilon_{ijk}$ is the residual error.
+
+```{r}
+#| label: unconditional-means-model-multi
+
+umm3_model <- lmer(gys_mn~ 1 + (1|sedaadmin) + (1|`County Names`), 
+                  data = math_longer)
+
+summary(umm3_model)
+```
+
+Results - Mean math score: 0.026 - Between-district variance: 1.0675 - Between-county variance: 0.3936
+
+##### Unconditional Growth Model
+
+Extending the unconditional growth model to account for county-level variation:
+
+$$
+Y_{ijk} = \alpha_0 + \alpha_1 \times \text{yearsince2019} + \mu_i + \tau_j + u_{1} \times \text{yearsince2019} + u_{2} \times \text{yearsince2019}+ \epsilon_{ijk}
+$$
+
+where $u_{1}$ and $u_{2}$ are the random slopes for year at the school district and county levels, respectively.
+
+```{r}
+#| label: unconditional-growth-model-multi
+
+
+ugm3_model <- lmer(gys_mn~ yearsince2019 +  (yearsince2019|sedaadmin) + (yearsince2019|`County Names`), 
+                  data = math_longer)
+
+
+summary(ugm3_model)
+```
+
+##### Variable Selection
+
+I then performed variable selection to identify the most important predictors of math scores. I created a model with all the predictors (minus some very highly correlated ones) and filtered out the least significant predictors with a t-value threshold of 2.
+
+```{r}
+#| label: all-model-coefficients
+
+all_cols <- colnames(math_longer)
+
+ugm3ALL_model <- lmer(
+  paste(
+    "gys_mn ~",
+    paste(
+      all_cols[!all_cols %in% c(
+        "gys_mn", 
+        "sedaadmin", 
+        "seda_district",
+        "stateabb",
+        "subject",
+        "County Names",
+        "year",
+        "share_inperson",
+        "total_revenue",
+        "Family_Unity"
+        )], 
+      collapse = " + "
+      ),
+    "+ (yearsince2019|sedaadmin) + (yearsince2019|`County Names`)"
+  ),
+  data = math_longer
+)
+
+summary(ugm3ALL_model)
+
+###Variables with t values > 2
+
+summary(ugm3ALL_model)$coefficients |>
+  as.data.frame() |>
+  filter(abs(`t value`) > 2)
+
+```
+
+I then categorized the predictors into different groups based what they measured and analyzed the correlation between the predictors to identify potential collinearity.
+
+###### School Modality:
+
+Removed share_hybrid due to high correlation with share_inperson.
+
+###### Revenue/Funding:
+
+Removed highly correlated salary variables and retained the variables that were aggregated by student.
+
+###### Social Capital:
+
+Removed component variables that contribute to County_Level_Index.
+
+###### Social Factors:
+
+Retained married_household and kept both educational attainment variables.
+
+###### Demographics:
+
+Removed only_english and non_english due to correlation; retained native_born.
+
+Maintained both white_percent and black_percent despite correlation due to their demographic importance.
+
+###### Employment:
+
+Removed employment_past_year due to high correlation with no_workers.
+
+###### Income:
+
+Removed mean_income in favor of median_income, which better aligns with interpretability.
+
+The final model included 21 predictors and vif was also used to check for multicollinearity. The model was then evaluated using anova to determine if the model fit was improved with the reduced set of predictors. The drop in deviance test showed that the reduced model had a lower AIC and BIC as well as a very high p value, indicating a better fit.
+
+##### Finalizing Predictors
+
+I then once again filtered the predictors to only include those with a t-value greater than 2. This resulted in a model with 11 predictors. The model was compared to the previous model using anova to determine if the reduced set of predictors significantly improved the model fit. The drop in deviance test showed that the reduced model had a lower AIC and BIC but a very small p value which indicates that the reduced model did not significantly improve the model fit.
+
+Key Significant Variables:
+
+###### Time:
+
+yearsince2019 (Negative coefficient, consistent with pandemic impact)
+
+yearsqrdsince2019 (Positive coefficient, indicating recovery post-pandemic)
+
+###### School Modality:
+
+share_virtual (Negative coefficient, aligning with reduced learning efficacy in virtual settings)
+
+###### Revenue/Funding:
+
+esser_per_student and geer_per_student both had negative coefficients, which is in line with title 1 schools receiving more funding.
+
+###### County-Level Demographics:
+
+with_computer (Negative coefficient, unexpected)
+
+sex_ratio (Negative coefficient)
+
+asian_percent (Positive coefficient, could be due to higher asian populations in urban areas)
+
+unemployment (Negative coefficient, expected)
+
+median_income (Positive coefficient, expected)
+
+##### Random Effects
+
+Once I had finalized the fixed effects for my model, I then explored the random effects to understand the variation at the school district and county levels.
+
+I had recurringly used (yearsince2019\|sedaadmin) and (yearsince2019\|`County Names`) to account for the variation in math scores over time at the school district and county levels and fit models without each of these to verify their necessity and contribution to the model.
+
+I first tried fitting a model with a random effect of share_virtual at the school district level. This model failed to converge and produced an error. I then tried fitting a model with a random effect of share_virtual at the county level. This model was able to converge. This suggests that the random effect of share_virtual is better modeled at the county level rather than the school district level.
 
 ## References
