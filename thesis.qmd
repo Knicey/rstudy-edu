@@ -8,11 +8,28 @@ editor_options:
 bibliography: references.bib
 ---
 
+```{r load-pkg-data}
+#| echo: false
+#| message: false
+#| warning: false
+
+library(knitr)
+library(readr)
+library(tidyverse)
+library(broom.mixed)
+library(lme4)
+library(broom.mixed)
+
+integrated_ds <- readr::read_csv('data/IntegratedDataset.csv')
+
+```
+
+
 ## Project Background
 
 The goal of this project is to model academic performance in school districts across the United States through various demographic and socioeconomic factors. The data sources include the American Community Survey (ACS), the Educational Opportunity Project, the Longitudinal School Demographic Dataset (LSDD), the Common Core of Data (CCD), and the Census. The data was joined by school district and county to create a comprehensive dataset for analysis.
 
-I first explored the relationship between a few socioeconomic factors and academic performance in school districts as they are a standard geographical unit for school administration. I created a dashboard to visualize my findings and developed some simple linear regression models to explore the relationship between these factors and academic performance.
+I created some preliminary simple linear regression models within an interactive dashboard to explore the relationship between academic performance and various socioeconomic factors. I used the shiny [@shiny] package to create the dashboard and the ggplot2 [@ggplot2] package to create visualizations for the data. I used the rsconnect [@rsconnect] package to deploy the dashboard onto shinyapps.com where it can be publicly accessible.
 
 Due to a lack of datasets aggregated to the school district level, this project focused on expanding my earlier work by incorporating data sources with county level statistics and an improved method for joining datasets to preserve more records and develop a more comprehensive dataset for analysis. Furthermore, I incorporated hierarchical modeling to account for the nested structure of the data and explored the impact of various predictors on academic performance.
 
@@ -24,37 +41,35 @@ The COVID-19 pandemic has had a significant impact on education, with many stude
 
 The first step of my project was to identify the datasets that I would be using for this project. I started with only looking at datasets aggregated by school district as that would be the most granular level relevant to my research question. I started with the American Community Survey (ACS), the Educational Opportunity Project, the Common Core of Data (CCD), and the Census. I reviewed the data dictionaries for each dataset to understand the variable encoding and the extent of the data. I also reviewed the data sources to understand the data collection process and the limitations of the data.
 
-### Data Resources
+### Data
 
-The core dataset is from the Educational Opportunity Project (citation) and contains academic performance data across school districts. The academic performance varaibles represent difference in grade level relative to the 2019 national average. This dataset contains academic performance variables from 2016 to 2023 aggregated across different student subgroups and subjects within 7390 school districts.
+#### Data Resources
 
-I then identified a dataset from the Census that contains mappings from school district to county. Counties typically contain at least one school district and often several. This dataset contains the mappings for 18998 school districts.
+The core dataset is from the Educational Opportunity Project @SEDA and contains academic performance data across school districts. The academic performance varaibles represent difference in grade level relative to the 2019 national average. This dataset contains academic performance variables from 2016 to 2023 aggregated across different student subgroups and subjects within 7390 school districts.
+
+I then identified a dataset from the Census that contains mappings from school district to county @Census2021. Counties typically contain at least one school district and often several. This dataset contains the mappings for 18998 school districts. This dataset was used to join all of the county-level datasets to the academic performance dataset.
 
 The next core datasets were the Data Profiles (DP) from the American Community Survey (ACS). These DPs contain a selection of features from various ACS datasets that are curated to provide a consistent set of features across counties. These datasets contain demographic and socioeconomic features such as income, poverty, housing, education, and employment. These datasets are aggregated at the county level and represent the 2018 to 2022 5-Year estimated statistics for 3222 counties
 
 I did attempt to use ACS datasets that were aggregated by school district but found that the data was very sparse and did not provide enough information for analysis.
 
-The Common Core of Data (CCD) dataset contains information on membership, salaries, and revenue from local, state, and federal sources. Additionly, this dataset contains COVID emergency relief funding from the Elementary and Secondary School Emergency Relief Fund (ESSER), which was allotted funding through the Coronavirus Aid, Relief, and Economic Security (CARES) Act for the purposes of education stabilization during the pandemic. This dataset also contains funding statistics from the Governor's Emergency Education Relief Fund (GEER), which was also allotted from the CARES act and was intended to provide emergency support to schools and higher education institutions. Both of these emergency funds also had extensions (ESSER II and GEER II respectively) that provided through the Coronavirus Response and Relief Supplemental Appropriations (CRRSA) Act
+The Common Core of Data (CCD) dataset @CCD2022 contains information on membership, salaries, and revenue from local, state, and federal sources. Additionly, this dataset contains COVID emergency relief funding from the Elementary and Secondary School Emergency Relief Fund (ESSER), which was allotted funding through the Coronavirus Aid, Relief, and Economic Security (CARES) Act for the purposes of education stabilization during the pandemic. This dataset also contains funding statistics from the Governor's Emergency Education Relief Fund (GEER), which was also allotted from the CARES act and was intended to provide emergency support to schools and higher education institutions. Both of these emergency funds also had extensions (ESSER II and GEER II respectively) that were provided through additional legislation. Both funds were also allocated to schools in alignment with Title 1 funding levels which are intended to provide additional funding to schools with a high percentage of students from low-income families. This dataset is aggregated at the school district level and contains data for 19572 school districts for the 2022 fiscal year.
 
-and the Governor's Emergency Education Relief Fund (GEER). This dataset is aggregated at the school district level and contains data for 19572 school districts for the 2022 fiscal year.
+The Covid School Data Hub (CSDH) @CSDH2023 dataset contains self-reported data from state education agencies on learning modality and enrollment. This dataset is aggregated at the school district level and contains data for 14967 school districts for the 2020-2021 school year.
 
-The Covid School Data Hub (CSDH) dataset contains self-reported data from state education agencies on learning modality and enrollment. This dataset is aggregated at the school district level and contains data for 14967 school districts for the 2020-2021 school year.
-
-The Social Capital Project (SCP) dataset contains information on social capital indicators such as family structure, religious attendance, and social trust. These indicators are measured using data such as births per married woman, religious congregations, voting turnout, and violent crimes per population. This dataset is aggregated at the county level and contains data for 3142 counties generated in 2017.
+The Social Capital Project (SCP) @SCP2019 dataset contains information on social capital indicators such as family structure, religious attendance, and social trust. These indicators are measured using data such as births per married woman, religious congregations, voting turnout, and violent crimes per population. This dataset is aggregated at the county level and contains data for 3142 counties generated in 2017.
 
 While these datasets come from a 5-year timeframe, these are variables that are relatively stable over time and are not expected to change significantly within this timeframe. The academic performance data is the most dynamic and will be the focus of the analysis. The other datasets will be used to provide context and additional features for the analysis. Additionally, many of these datasets will have fields that are highly correlated with each other and will need to be pruned down to a more manageable set of features.
 
-### Data Curation
+#### Data Curation
 
 I first joined the datasets solely by school district name. This was a simple join that matched the exact names of the school districts. However, this method had issues as many school districts had different names in different datasets due to no common naming convention. This would result in many records not being matched and a loss of data.
 
-I created some preliminary simple linear regression models within an interactive dashboard to explore the relationship between academic performance and various socioeconomic factors. I used the shiny [@shiny] package to create the dashboard and the ggplot2 [@ggplot2] package to create visualizations for the data. I used the rsconnect [@rsconnect] package to deploy the dashboard onto shinyapps.com where it can be publicly accessible.
-
 Next, I reviewed the data sources I initially picked out and identified additional data sources that could be useful for this project. These came primarily from reading various research papers and reports that studied similar topics. I used an excel spreadsheet to track all of the data sources and variables of interest.
 
-After identifying an exhaustive list of datasets and variables, I began the process of downloading and cleaning the data. I used the tidyverse [@tidyverse-2] package to clean and manipulate the data to prepare the datasets to be joined. For my joining process, I used fuzzy matching techniques to join records that were similar but not exact matches. The metrics I used for fuzzy matching were string distance and Jaccard difference.
+After identifying an exhaustive list of datasets and variables, I began the process of downloading and cleaning the data. I used the tidyverse [@tidyverse] package to clean and manipulate the data to prepare the datasets to be joined. For my joining process, I used fuzzy matching techniques to join records that had similar school district names but not exact matches. The metrics I used for fuzzy matching were string distance and Jaccard difference.
 
-String distance is a metric that calculates the number of character changes needed to transform one string into another while Jaccard difference is a metric that compares how many 2-letter pairs are shared between two strings. I used the stringdist [@stringdist] package to calculate both of these metrics and determined thresholds from examining the distributions and matching strength for each metric. I then joined the datasets purely by matching state and calculated the metrics for every pair of school district names within a state. Once I have this dataset with all the potential matches, I start an extensive filtering to ensure I am getting the most accurate matches possible.
+String distance is a metric that calculates the number of character changes needed to transform one string into another while Jaccard difference is a metric that compares how many 2-letter pairs are shared between two strings. I used the stringdist [@stringdist] package to calculate both of these metrics and determined thresholds from examining the distributions and matching strength for each metric. I then joined the datasets purely by matching state and calculated the metrics for every pair of school district names within a state. Once I had this dataset with all the potential matches, I developed an extensive filtering process to ensure I got the most accurate matches possible.
 
 1.  Filter for matches that both begin with the same letter: This prevents matches names containing North/South and East/West at the beginning are not accidentally mapped together due to the characters in these cardinal directions being similar
 2.  Filter for matches that end with the same three letters: This prevents matches such as "Abcdefgh county" and "Abcdefgh city" where the school districts may have the same name but are clearly different entities. This also resolves matching names that have numbers at the end such as "Abcdefgh 231" and "Abcdefgh 562" that clearly represent different school districts
@@ -90,72 +105,34 @@ Early on in my project, I only selected datasets that were aggregated by school 
 
 The new comprehensive dataset is much larger and contains more features than the previous dataset. However, the loss of granularity from school district to county may have an impact on the accuracy of the modeling. I keep this in mind throughout my modeling phase and weigh this in when interpreting the results.
 
-### Integrated Dataset EDA
+The final step for this comprehensive dataset was to filter for records that did not have any missing data in the key variables. This was to ensure that the data was clean and ready for analysis.
+
+Before filtering for missing data, the dataset contained 10842 records with academic performance data across 2019, 2022, and 2023. After applying all filters for missing data, the dataset contained 2208 records. This was a significant reduction in the number of records as many school districts did not have complete coverage across all datasets.
+
+I analyzed the geographic distribution of the data before and after filtering for missing data.
 
 ```{r}
-#| message: false
-#| warning: false
 #| include: false
-library(tidyverse)
-library(lme4)
-library(broom.mixed)
-integrated_ds <- readr::read_csv('data/IntegratedDataset.csv')
+
+kable(x = integrated_ds |>
+  group_by(stateabb) |>
+  count() |>
+  arrange(desc(n)),
+  caption = "Geographic Distribution of Data by State Before Filtering"
+)
+
+kable(x = integrated_ds |>
+  filter(!if_any(everything(), is.na)) |>
+  group_by(stateabb) |>
+  count() |>
+  arrange(desc(n)),
+  caption = "Geographic Distribution of Data by State After Filtering"
+)
 ```
 
-After I created the integrated dataset, I needed to understand the distributions and relationships between the features. I used the `ggplot2` [@ggplot2] package to create histograms, scatter plots, and correlation matrices to understand the data better. I also used the `dplyr` [@dplyr] package for data manipulation and summarization.
+The geographic diversity is noticeably affected by this filtering process as many states have a significant reduction in the number of school districts. For example, California had 1165 records before filtering and 0 after filtering. This is due to the high number of missing values in the California data. This will be a limitation in the analysis as the data is not representative of all states. In particular, the ACS and SCP data were only available for counties in 21 states of which only 14 were in common for both datasets. Further filtering brought this down to the 10 states that were common across all datasets.
 
-The first step was visualizing math scores across school districts over time. I created several histograms that showed the distribution of math scores across school districts for each year contained in the data.
-
-```{r}
-#| label: data-score-distribution
-
-math_scores <- integrated_ds |>
-  filter(subject == 'mth')
-
-ggplot(math_scores, aes(x = gys_mn_2019_ol)) +
-  geom_histogram(fill = "skyblue", color = "black", bins = 30) +
-  labs(title = "Distribution of Math Scores in 2019", subtitle = "Standard deviations away from 2019 national average", x = "Math Score", y = "Frequency") +
-  scale_x_continuous(limits = c(-5, 5)) +
-  scale_y_continuous(limits = c(0, 200))
-
-ggplot(math_scores, aes(x = gys_mn_2022_ol)) +
-  geom_histogram(fill = "skyblue", color = "black", bins = 30) +
-  labs(title = "Distribution of Math Scores in 2022", subtitle = "Standard deviations away from 2019 national average", x = "Math Score", y = "Frequency") +
-  scale_x_continuous(limits = c(-5, 5)) +
-  scale_y_continuous(limits = c(0, 200))
-
-ggplot(math_scores, aes(x = gys_mn_2023_ol)) +
-  geom_histogram(fill = "skyblue", color = "black", bins = 30) +
-  labs(title = "Distribution of Math Scores in 2023", subtitle = "Standard deviations away from 2019 national average", x = "Math Score", y = "Frequency") +
-  scale_x_continuous(limits = c(-5, 5)) +
-  scale_y_continuous(limits = c(0, 200))
-```
-
-The distribution of math scores is noticeably shifted to the left in 2022 and 2023 compared to 2019. This indicates that the average math scores (in terms of standard deviations from the 2019 national average) across school districts decreased in this time period. This is consistent with the findings of other research that has shown a decline in academic performance during the COVID-19 pandemic.
-
-The next step was to visualize the geographic distribution of my dataset. The simplest way to do this was examining the spread of school disticts by state.
-
-```{r}
-#| label: data-state-distribution
-
-ggplot(math_scores, aes(x = stateabb)) +
-  geom_bar(fill = "skyblue", color = "black") +
-  labs(title = "Distribution of Districts by State", x = "State", y = "Frequency") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-
-This plot shows that the dataset only contains school districts from 13 states. Additionally, the data is sourced heavily from Michigan and Wisconsin. This is a limitation of the dataset and may impact the generalizability of the results to other states.
-
-This dataset also introduced new types of data of interest such as the Social Capital Index from the Social Capital Project dataset. This index is a composite measure of social capital that includes indicators such as family structure, religious attendance, social cohesion, and institutional trust. I wanted to explore the relationship between this index and academic performance.
-
-```{r}
-#| label: data-social-capital
-
-ggplot(math_scores, aes(x = `County_Level_Index`, y = gys_mn_2019_ol)) +
-  geom_point()
-```
-
-This scatter plot shows a weak positive relationship between the social capital index and math scores in 2019. This suggests that school districts with higher social capital tend to have higher math scores. This relationship will be explored further in the modeling phase.
+Due to this non-random pattern, standard imputation techniques such as mean imputation by state were deemed unsuitable. An alternative approach considered converting revenue data into categorical ranges (e.g., "Not Reported," "0-X," etc.), though this approach risked reducing the informative value of the continuous revenue variable.
 
 ### Modeling
 
@@ -166,7 +143,10 @@ I first transformed the dataset into a long format using the pivot_longer() func
 Next, I created new variables to facilitate trend analysis. I calculated the number of years since 2019 `yearsince2019` and its square (yearsqrdsince2019) to account for potential nonlinear trends over time as there is a general increase in test scores from 2022 to 2023. To standardize the scale of financial variables and put variables on a more similar scale, I converted all revenue and salary figures from raw values into millions of dollars. I also calculated per-student revenue and salaries by dividing total figures by student membership counts as school financial and membership variables had extremely high correlation with each other. Additionally, key socioeconomic metrics such as median income, mean income, and owner-occupied property values were scaled by dividing by 1,000. Percentages for instructional modes (in-person, hybrid, and virtual) were adjusted to range from 0 to 100 for better interpretability.
 
 ```{r}
+#| include: false
+
 integrated_longer <- integrated_ds |>
+  filter(!if_any(everything(), is.na)) |> 
   pivot_longer(cols = starts_with("gys_mn"), names_to = "year", values_to = "gys_mn") |>
   mutate(year = str_remove(year, "gys_mn_")) |>
   mutate(year = str_remove(year, "_ol")) |>
@@ -204,27 +184,61 @@ math_longer <- integrated_longer |>
   filter(!is.na(total_revenue))
 ```
 
-To ensure the dataset's integrity during modeling, rows containing missing revenue data were excluded. Analysis of this missing revenue data showed that this exclusion disproportionately affected districts in Arkansas, Mississippi, and Nevada. Due to this non-random pattern, standard imputation techniques such as mean imputation by state were deemed unsuitable. An alternative approach considered converting revenue data into categorical ranges (e.g., "Not Reported," "0-X," etc.), though this approach risked reducing the informative value of the continuous revenue variable.
+##### Curation of Predictors
 
-```{r}
-integrated_ds |>
-  filter(is.na(total_fed_revenue)) |>
-  group_by(stateabb) |>
-  count()
+When modeling, it is important to check for collinearity between predictors because highly correlated predictors can lead to unstable estimates and inflated standard errors. I used the `cor()` function to calculate the correlation matrix for each set of predictors in the dataset and identified highly correlated variables.
 
-integrated_ds |>
-  group_by(stateabb) |>
-  count()
+For the school modality variables `share_virtual`, `share_inperson`, and `share_hybrid`, I found that share_inperson and share_hybrid were highly correlated. I decided to remove both of these variables and just keep `share_virtual` in the model as that kept interpretations more straightforward as I could delineate between the effect of learning environments that were fully virtual or had some component of inperson learning.
 
-integrated_ds |>
-  filter(!is.na(total_fed_revenue)) |>
-  group_by(stateabb) |>
-  count()
-```
+For the revenue and salary variables, I found that the membership, total revenue, and total salary variables were very highly correlated. I decided to remove all the total revenue and total salary variables from the model except for `total_revenue`. Additionally, none of the per student variables except for `inst_salaries_per_student` were highly correlated with each other so I kept all but that one in the model.
 
-#### Initial Two Level Modeling
+Final List:
+- `total_revenue`
+- `revenue_per_student`
+- `esser_per_student`
+- `geer_per_student`
 
-To get myself familiarized with the procdure for hierachical modeling, I started with fitting two unconditional models: an unconditional means model and an unconditional growth model. These models were helpful in understanding the variation in math scores across school districts and over time.
+For the SCP variables, I know from the data documention of the SCP dataset that County_Level_index is a linear combination of the other social capital variables. As such, I removed all the other social capital variables from the model except for `County_Level_Index`.
+
+Final List:
+- `County_Level_Index`
+
+For the ACS social characteristic variables, I found that all the variables regarding marital status were highly correlated with each other. I decided to remove all of these variables except for `married_household`. Additionally, I interestingly found that the variables regarding educational attainment were not highly correlated with each other. As such, I kept `over_25_highschool_degree` and `over_25_bachelors_degree` in the model.
+
+Final List:
+- `married_household` 
+- `over_25_highschool_degree`
+- `over_25_bachelors_degree`
+
+For the ACS demographic variables, I found that `native_born`, `only_english`, and `non_english` were all highly correlated with each other. I decided to remove `only_english` and `non_english` from the model. Additionally, I found that `with_internet` and `with_computer` were highly correlated with each other. As such, I elected to keep `with_computer` in the model. The only racial variables that had high correlation were `white_percent` and `black_percent`. I keep all the racial variables in the model however as they are all important for understanding the demographic makeup of the school district.
+
+Final List:
+- `native_born`: Percentage of people born in the US
+- `with_computer`: Percentage of households with a computer
+- `white_percent`
+- `black_percent`
+- `hispanic_percent`
+- `asian_percent`
+
+For the ACS employment variables, I found that `no_workers` and `employment_past_year` were very highly correlated but no other variables were. As such I kept all the employment variables except `employment_past_year` in the model.
+
+Final List:
+- `no_workers`: Percentage of households with no workers
+- `one_worker`: Percentage of households with one worker
+- `unemployment`: 
+
+For the ACS income variables, `median_income` and `mean_income` jumped out as being extremely correlated with each other. I decided to stick with `median_income` because it is a more robust measure of central tendency. These income variables were also very highly correlated with `owner_occupied_value`, `SMOC`, `rent`, and `mortgage_percentage` so those variables were removed.
+
+Final List:
+- `median_income`
+- `with_health_insurance`
+- `poverty`
+- `occupancy`
+
+
+#### Two Level Modeling
+
+I started with fitting two unconditional models: an unconditional means model and an unconditional growth model. These models were helpful in understanding the variation in math scores across school districts and over time. Examining this variance would also determine the necessity for hierarchical modeling.
 
 ##### Unconditional Means Model
 
@@ -242,23 +256,22 @@ where $Y_{ij}$ is the math score for school district $i$ in year $j$, $\alpha_0$
 umm_model <- lmer(gys_mn~ 1 + (1|sedaadmin), 
                   data = math_longer)
 
-summary(umm_model)
-
-icc <- 1.5087 / (1.5087 +  0.1399)
-icc
+tidy(umm_model)
 ```
 
 The model output produced an intercept of 0.086, representing the mean math score across all districts and years (in terms of standard deviations from the 2019 national average). The variance components were:
 
-Between-district variance = 1.5087 Within-district variance = 0.1399
+Between-district variance = 1.23
+
+Within-district variance = 0.374
 
 We can calculate the intraclass correlation coefficient (ICC) as the proportion of total variance due to between-district variance:
 
 $$
-ICC = \frac{\text{Between-district variance}}{\text{Between-district variance} + \text{Within-district variance}} = \frac{1.5087}{1.5087 + 0.1399} = 0.915
+ICC = \frac{\text{Between-district variance}}{\text{Between-district variance} + \text{Within-district variance}} = \frac{1.23}{1.23 + 0.374} = 0.767
 $$
 
-This indicates that 91.5% of the total variance in math scores is due to differences between school districts.
+This indicates that 76.7% of the total variance in math scores is due to differences between school districts. As such, this supports the need for hierarchical modeling to account for the nested structure of the data.
 
 ##### Unconditional Growth Model
 
@@ -276,12 +289,12 @@ where $\alpha_1$ is the fixed effect of time on math scores.
 ugm_model <- lmer(gys_mn~ yearsince2019 + (1|sedaadmin), 
                   data = integrated_longer)
 
-summary(ugm_model)
+tidy(ugm_model)
 ```
 
-The model yielded -0.09 as the coefficient for year, suggesting that math scores have been declining over time. The variance components were similar to the UMM model:
+The model yielded -0.095 as the coefficient for year, suggesting that math scores have been declining over time. The variance components were similar to the UMM model:
 
-Between-district variance = 1.575 Within-district variance = 0.118
+The between-district variance was 1.21 and within-district variance 0.336 giving us an ICC of 0.783 further supporting the need for hierarchical modeling.
 
 Next I created an additional model that incorporated a county-level index (County_Level_Index) as a fixed effect to capture regional differences:
 
@@ -511,5 +524,171 @@ Once I had finalized the fixed effects for my model, I then explored the random 
 I had recurringly used (yearsince2019\|sedaadmin) and (yearsince2019\|`County Names`) to account for the variation in math scores over time at the school district and county levels and fit models without each of these to verify their necessity and contribution to the model.
 
 I first tried fitting a model with a random effect of share_virtual at the school district level. This model failed to converge and produced an error. I then tried fitting a model with a random effect of share_virtual at the county level. This model was able to converge. This suggests that the random effect of share_virtual is better modeled at the county level rather than the school district level.
+
+## Results
+
+### Integrated Dataset EDA
+
+After I created the integrated dataset, I needed to understand the distributions and relationships between the features. I used the `ggplot2` [@ggplot2] package to create histograms, scatter plots, and correlation matrices to understand the data better. I also used the `dplyr` [@dplyr] package for data manipulation and summarization.
+
+The first step was visualizing math scores across school districts over time. I created several histograms that showed the distribution of math scores across school districts for each year contained in the data. Additionally, I examined relationships between math scores and my predictors such as school modality, socioeconomic variables, and social capital.
+
+#### Math Score Distribution
+
+```{r}
+#| label: data-score-distribution
+#| echo: false
+
+math_scores <- integrated_ds |>
+  filter(!if_any(everything(), is.na)) |> 
+  filter(subject == 'mth') |>
+  mutate(
+    revenue_per_student = total_revenue / membership,
+    esser_per_student = (total_esser1 + total_esser2) / membership,
+    geer_per_student = (total_geer1 + total_geer2) / membership
+  )
+
+math_scores_long <- math_scores |>
+  pivot_longer(
+    cols = c(
+      gys_mn_2019_ol, 
+      gys_mn_2022_ol, 
+      gys_mn_2023_ol
+    ), 
+    names_to = "Year", 
+    values_to = "Math_Score"
+  )
+
+ggplot(math_scores_long, aes(x = Math_Score, fill = Year)) +
+  geom_density(alpha = 0.4, color = "black") +
+  labs(title = "Density Plot of Math Scores",
+       subtitle = "Distribution of Math Scores in 2019, 2022, and 2023",
+       x = "Math Score (Standard Deviations from 2019 National Average)",
+       y = "Density") +
+  scale_fill_manual(values = c("gys_mn_2019_ol" = "skyblue", "gys_mn_2022_ol" = "lightgreen", "gys_mn_2023_ol" = "lightcoral"), 
+                    name = "Year", labels = c("2019", "2022", "2023")) +
+  theme_minimal()
+```
+
+
+The distribution of math scores is noticeably shifted to the left in 2022 and 2023 compared to 2019. This indicates that the average math scores (in terms of standard deviations from the 2019 national average) across school districts decreased in this time period. This is consistent with the findings of other research that has shown a decline in academic performance during the COVID-19 pandemic.
+
+#### Social Capital Index
+
+This dataset also introduced new types of data of interest such as the Social Capital Index from the Social Capital Project dataset. This index is a composite measure of social capital that includes indicators such as family structure, religious attendance, social cohesion, and institutional trust. I wanted to explore the relationship between this index and academic performance.
+
+```{r}
+#| label: data-social-capital
+#| echo: false
+
+ggplot(math_scores, aes(x = County_Level_Index)) +
+  geom_density(alpha = 0.4, fill = "skyblue") +
+  labs(title = "Density Plot of Social Capital Index",
+       subtitle = "Distribution of Social Capital Index Across School Districts",
+       x = "Social Capital Index",
+       y = "Density") +
+  theme_bw()
+
+ggplot(math_scores, aes(x = `County_Level_Index`, y = gys_mn_2019_ol)) +
+  geom_point() + 
+  labs(title = "Social Capital Index vs. Math Scores in 2019",
+       subtitle = "Relationship Between Math Scores and Social Capital Index",
+       x = "Social Capital Index",
+       y = "Math Score") +
+  theme_bw()
+
+```
+
+This scatter plot shows a weak positive relationship between the social capital index and math scores in 2019. This suggests that school districts with higher social capital tend to have higher math scores. As such, this remained a key variable of interest for further analysis.
+
+#### Technology Use
+
+I also wanted to explore the relationship between technology use and academic performance. I wanted to examine how access to technology such as computers and the internet might impact math scores.
+
+```{r}
+#| label: data-computer-use
+#| echo: false
+
+ggplot(math_scores, aes(x = with_computer)) +
+  geom_density(alpha = 0.4, fill = "skyblue") +
+  labs(title = "Density Plot of Computer Access",
+       subtitle = "Distribution of Computer Access Across School Districts",
+       x = "Percentage of Households with Computer Access",
+       y = "Density") +
+  theme_bw()
+
+ggplot(math_scores, aes(x = with_computer, y = gys_mn_2019_ol)) +
+  geom_point() +
+  labs(title = "Computer Access vs. Math Scores in 2019",
+       subtitle = "Relationship Between Math Scores and Computer Access",
+       x = "Percentage of Households with Computer Access",
+       y = "Math Score") +
+  theme_bw()
+```
+
+There does appear to be a weak positive relationship between computer access and math scores. This suggests that school districts with higher computer access tend to have higher math scores. This relationship is consistent with the idea that access to technology can positively impact academic performance.
+
+```{r}
+#| label: data-internet-use
+#| echo: false
+
+ggplot(math_scores, aes(x = with_internet)) +
+  geom_density(alpha = 0.4, fill = "skyblue") +
+  labs(title = "Density Plot of Internet Access",
+       subtitle = "Distribution of Internet Access Across School Districts",
+       x = "Percentage of Households with Internet Access",
+       y = "Density") +
+  theme_bw()
+
+ggplot(math_scores, aes(x = with_internet, y = gys_mn_2019_ol)) +
+  geom_point() +
+  labs(title = "Internet Access vs. Math Scores in 2019",
+       subtitle = "Relationship Between Math Scores and Internet Access",
+       x = "Percentage of Households with Internet Access",
+       y = "Math Score") +
+  theme_bw()
+```
+
+The scatterplot for internet usage also seems to suggest a weak positive relationship with math scores. This indicates that school districts with higher internet access tend to have higher math scores.
+
+#### Revenue and Funding
+
+I also wanted to explore the relationship between revenue and funding and academic performance. In particular, I was interested in the COVID-19 emergency relief funding (ESSER and GEER) that was provided to schools during the pandemic. I also wanted to examine the level of funding per student and how that might impact math scores.
+
+```{r}
+#| label: data-revenue-funding
+#| include: false
+
+kable(x = math_scores |>
+  select(revenue_per_student,esser_per_student, geer_per_student) |>
+  summary() 
+)
+
+ggplot(math_scores, aes(x = revenue_per_student, y = gys_mn_2019_ol)) +
+  geom_point() +
+  labs(title = "Revenue per Student vs. Math Scores in 2019",
+       subtitle = "Relationship Between Math Scores and Revenue per Student",
+       x = "Revenue per Student (Dollars)",
+       y = "Math Score") +
+  theme_bw()
+
+ggplot(math_scores, aes(x = esser_per_student, y = gys_mn_2019_ol)) +
+  geom_point() +
+  labs(title = "ESSER Funding per Student vs. Math Scores in 2019",
+       subtitle = "Relationship Between Math Scores and ESSER Funding per Student",
+       x = "ESSER Funding per Student (Dollars)",
+       y = "Math Score") +
+  theme_bw()
+
+ggplot(math_scores, aes(x = geer_per_student, y = gys_mn_2019_ol)) +
+  geom_point() +
+  labs(title = "GEER Funding per Student vs. Math Scores in 2019",
+       subtitle = "Relationship Between Math Scores and GEER Funding per Student",
+       x = "GEER Funding per Student (Dollars)",
+       y = "Math Score") +
+  theme_bw()
+```
+
+The summary statistics for each kind of funding variable show that the the vast majority of school districts fall into a similar range except for a small number of outliers. The scatter plots for revenue per student does not indicate any clear relationship with math scores. However, the scatter plots for ESSER and GEER funding per student show a distinct negative relationship with math scores. This suggests that school districts that received more emergency relief funding were associated with lower math scores.
 
 ## References
