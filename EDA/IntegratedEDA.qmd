@@ -31,6 +31,19 @@ library(lme4)
 #| message: false
 
 integrated_ds <- readr::read_csv('data/IntegratedDataset.csv')
+
+a <- census_school_districts |> 
+    group_by(`State Postal Code`, `County Names`) |>
+    count()
+
+a |>
+  group_by(n) |>
+  count()
+
+ggplot(a, aes(x = n)) +
+  geom_histogram()
+
+
 ```
 
 ## EDA/Graphs
@@ -132,8 +145,8 @@ integrated_longer <- integrated_longer |>
   )
 
 math_longer <- integrated_longer |>
-  filter(subject == 'mth') |>
-  filter(!is.na(total_revenue))
+  filter(!if_any(everything(), is.na)) |>
+  filter(subject == 'mth')
   
 ```
 
@@ -147,12 +160,12 @@ integrated_ds |>
   summary()
 
 integrated_ds |>
-  filter(!is.na(total_fed_revenue)) |>
+  filter(!if_any(everything(), is.na)) |>
   select(gys_mn_2019_ol) |>
   summary()
 
 integrated_ds |>
-  filter(is.na(total_fed_revenue)) |>
+  filter(!if_any(everything(), is.na)) |>
   group_by(stateabb) |>
   count()
 
@@ -161,7 +174,7 @@ integrated_ds |>
   count()
 
 integrated_ds |>
-  filter(!is.na(total_fed_revenue)) |>
+  filter(!if_any(everything(), is.na)) |>
   group_by(stateabb) |>
   count()
 
@@ -170,7 +183,7 @@ integrated_ds |>
 
 Interpretations
 
--   We see that the states with missing revenue data are disporportionately from Arkansas, Mississippi, and Nevada
+-   We see that the states with missing data are disporportionately from Arkansas, Mississippi, and Nevada
 -   Because of this, I can't perform mean imputation by state
 -   As such, I will make a note of this moving forward
 -   I also confirmed all other columns have data for all rows
@@ -186,6 +199,8 @@ This could be a good way to account for the missing data, but it might introduce
 ### 2 Level
 
 #### Unconditional Means
+
+Note: numbers may be slightly different than written here as the dataset has gone through some revisions.
 
 ```{r}
 #| label: unconditional-means-model
@@ -206,6 +221,8 @@ Interpretations
 -   The std dev for the random effect intercept is 1.228 which represents the variablity in math scores across school districts from the overall mean.
 
 -   The std dev for the random effect residual is 0.374 which represents the year to year variability within a school district
+
+-   The ICC is 0.915 which represents the proportion of variance in math scores that is due to differences between school districts.
 
 #### Unconditional Growth
 
@@ -397,34 +414,40 @@ summary(umm3_model)
 
 Interpretations
 
--   Mean across all school-districts and counties: -0.204
--   Variance over time within school districts: 0.148
--   Variance between school districts in the same county: 1.123
--   Variance between counties: 0.455
+-   Mean across all school-districts and counties: 0.0256
+-   Variance between school districts: 1.0675\
+-   Variance between counties: 0.3936
 
 #### Unconditional Growth
 
 ```{r}
 #| label: unconditional-growth-model
 
-ugm2_model <- lmer(gys_mn~ yearsince2019 + (yearsince2019|sedaadmin), 
-                  data = math_longer)
 
-ugm3_model <- lmer(gys_mn~ yearsince2019 +  (yearsince2019|sedaadmin) + (0 + yearsince2019|`County Names`), 
+ugm3_model <- lmer(gys_mn~ yearsince2019 +  (yearsince2019|sedaadmin) + (yearsince2019|`County Names`), 
                   data = math_longer)
-
-summary(ugm2_model)
 
 summary(ugm3_model)
 ```
 
 Interpretations
 
--   Mean in 2019: 0.033
+-   Mean in 2019: 0.2625
+
 -   Mean yearly change score: -0.101
 
+-   Variance in school district intercept: 0.9543
+
+-   Variance in school district slope: 0.0077
+
+-   Variance between counties intercept: 0.3739
+
+-   Variance between counties slope: 0.0578
+
+-   We see larger variance in the baseline scores across both districts and counties than the yearly change in scores. This is expected given the large distribution of scores across school districts.
+
 ```{r}
-#| label: unconditional-growth-model-all-fixed
+#| label: all-model-coefficients
 
 all_cols <- colnames(math_longer)
 
@@ -438,18 +461,11 @@ ugm3ALL_model <- lmer(
         "seda_district",
         "stateabb",
         "subject",
-        "year", 
-        #"yearsince2019",
-        #"yearsqrdsince2019",
-        "County Names",
-        "share_inperson",
-        "share_hybrid",
-        "total_revenue",
-        "Family_Unity"
+        "County Names"
         )], 
       collapse = " + "
       ),
-    "+ (yearsince2019|sedaadmin) + (0 + yearsince2019|`County Names`)"
+    "+ (yearsince2019|sedaadmin) + (yearsince2019|`County Names`)"
   ),
   data = math_longer
 )
@@ -529,7 +545,7 @@ cor(math_longer |>
 )
 ```
 
-We see that membership and the total salary variables are highly correlated with all the revenue variables, so we will remove those from the model. All the revenues variables are also highly correlated with each other, so we will just keep one for our model (total_revenue). The variables that were aggregated per student (revenue_per_student, inst_salaries_per_student, esser_per_student, geer_per_student) are not strongly correlated with many variables. We will keep all of these variables and remove the emergency funding variables.
+We see that membership and the total salary variables are highly correlated with all the revenue variables, so we will remove those from the model. All the revenues variables are also highly correlated with each other, so we will just keep one for our model (total_revenue). The variables that were aggregated per student (revenue_per_student, esser_per_student, geer_per_student) are not strongly correlated with many variables. We will keep all of these variables and remove the emergency funding variables.
 
 -   Social Capital
     -   `County_Level_Index`
@@ -759,7 +775,7 @@ ugm3NEW_model.m <- lmer(
       colnames(math_filtered),
       collapse = " + "
       ),
-    "+ (yearsince2019|sedaadmin) + (0 + yearsince2019|`County Names`)"
+    "+ (yearsince2019|sedaadmin) + (yearsince2019|`County Names`)"
   ),
   data = math_longer
 )
@@ -780,6 +796,8 @@ summary(ugm3NEW_model.m)
 #| label: model-comparison
 anova(ugm3ALL_model, ugm3NEW_model.m)
 ```
+
+**CORRECTION: I move forward with this manually selected variable list as reducing it further significantly impacts model fit.**
 
 If we filter variables with t values \> 2, we see that the following variables are significant:
 
@@ -868,7 +886,6 @@ ugm3NEW_model.sv <- lmer(
 #| label: new-model-significant-variables-evaluation
 
 summary(ugm3NEW_model.sv)
-anova(ugm3ALL_model, ugm3NEW_model.sv)
 anova(ugm3NEW_model.sv, ugm3NEW_model.m)
 ```
 
@@ -936,7 +953,6 @@ summary(ugm3NEW_model.f)
 
 anova(ugm3NEW_model.sv, ugm3NEW_model.f)
 
-glance(ugm3NEW_model.f)
 ```
 
 #### Interpretations
@@ -962,13 +978,28 @@ glance(ugm3NEW_model.f)
 ```{r}
 #| label: testing-random-effects-1
 
+fixed_effect_cols = c(
+  "yearsince2019",
+  "yearsqrdsince2019",
+  "share_virtual",
+  "total_revenue",
+  "esser_per_student",
+  "geer_per_student",
+  "County_Level_Index",
+  "with_computer",
+  "black_percent",
+  "asian_percent",
+  "median_income"
+)
+
 ugm3NEW_model.f1 <- lmer(
   paste(
     "gys_mn ~",
     paste(
-      colnames(math_filtered),
+      fixed_effect_cols,
       collapse = " + "
       ),
+    "+ (yearsince2019|`sedaadmin`)",
     "+ (yearsince2019|`County Names`)"
   ),
   data = math_longer
@@ -976,7 +1007,7 @@ ugm3NEW_model.f1 <- lmer(
 
 summary(ugm3NEW_model.f1)
 
-anova(ugm3NEW_model.f, ugm3NEW_model.f1)
+confint(ugm3NEW_model.f1, method = "boot", oldNames = F)
 ```
 
 This model converges and shows that removing the random effect of yearsince2019 at the district level does significantly worse than the model with the random effect. This means that the effect of yearsince2019 on math scores varies significantly across districts
@@ -988,19 +1019,22 @@ ugm3NEW_model.f2 <- lmer(
   paste(
     "gys_mn ~",
     paste(
-      colnames(math_filtered),
+      fixed_effect_cols,
       collapse = " + "
       ),
     "+ (yearsince2019|sedaadmin)",
-    "+ (yearsince2019|`County Names`)",
-    "+ (share_virtual|`sedaadmin`)"
+    "+ (share_virtual|sedaadmin)",
   ),
   data = math_longer
 )
 
+tidy(ugm3NEW_model.f2)
+
+confint(ugm3NEW_model.f2, method = "boot", oldNames = F)
+
 ```
 
-This model fails to converge, so we will not include the random effect for share_virtual. This could be due to not enough variation in the share_virtual variable to estimate a random effect.
+This model converges and the coefficients are
 
 ```{r}
 #| label: testing-random-effects-3
@@ -1124,3 +1158,23 @@ anova(ugm3NEW_model.f, ugm3NEW_model.f7)
 ```
 
 This model converges but the anova test shows that the more complex model is not significantly better than the simpler model without the random effect for with_computer. This means that the effect of with_computer on math scores does not vary significantly across school districts.
+
+```{r}
+#| label: testing-random-effects-8
+
+ugm3NEW_model.f8 <- lmer(
+  paste(
+    "gys_mn ~",
+    paste(
+      colnames(math_filtered),
+      collapse = " + "
+      ),
+    "+ (yearsince2019|sedaadmin)",
+    "+ (yearsince2019|`County Names`)"
+  ),
+  data = math_longer
+)
+
+summary(ugm3NEW_model.f8)
+
+```

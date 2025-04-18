@@ -68,7 +68,6 @@ census_school_districts <- read_xls(
   skip = 2
 )
 
-
 #ACS data on social characteristics
 acs_social <- read_csv('data/ACS/CountyData/ACSDP5Y2022.DP02-Data.csv', skip = 1)
 
@@ -334,7 +333,7 @@ get_best_similarities <- function(
 
 best_sim_ccd <- get_best_similarities(test_mth_all_admindist_gys, trim_ccd_financial, 'seda_district', 'ccd_district', 0.3, 6)
 
-best_sim_csdh <- get_best_similarities(test_mth_all_admindist_gys, trim_csdh, 'seda_district', 'DistrictName', 0.3, 6, full = FALSE)
+best_sim_csdh <- get_best_similarities(test_mth_all_admindist_gys, trim_csdh, 'seda_district', 'DistrictName', 0.3, 6, full = TRUE)
 
 best_sim_census_counties <- get_best_similarities(test_mth_all_admindist_gys, trim_census_sdc, 'seda_district', 'School District Name', 0.3, 3, full = TRUE)[, -c(2:5)]
 
@@ -475,10 +474,12 @@ ggplot() +
   theme_minimal()
 ```
 
+We find that the number of rows (schools) left after meging all datasets and applying the filters is 2534 and still constitutes a significant portion of the original dataset. This is a significant improvement from last year's dataset which only had 250 school districts.
+
 ## Exporting
 
 ```{r Exporting-Final-Dataset}
-write_csv(filter4b, 'data/IntegratedDataset.csv')
+write_csv(comprehensive_dataset, 'data/IntegratedDataset.csv')
 ```
 
 ```{r Analysis-Fed-Rev-Test-Scores}
