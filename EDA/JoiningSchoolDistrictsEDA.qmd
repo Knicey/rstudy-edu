@@ -333,9 +333,9 @@ get_best_similarities <- function(
 
 best_sim_ccd <- get_best_similarities(test_mth_all_admindist_gys, trim_ccd_financial, 'seda_district', 'ccd_district', 0.3, 6)
 
-best_sim_csdh <- get_best_similarities(test_mth_all_admindist_gys, trim_csdh, 'seda_district', 'DistrictName', 0.3, 6, full = TRUE)
+best_sim_csdh <- get_best_similarities(test_mth_all_admindist_gys, trim_csdh, 'seda_district', 'DistrictName', 0.3, 6, full = FALSE)
 
-best_sim_census_counties <- get_best_similarities(test_mth_all_admindist_gys, trim_census_sdc, 'seda_district', 'School District Name', 0.3, 3, full = TRUE)[, -c(2:5)]
+best_sim_census_counties <- get_best_similarities(test_mth_all_admindist_gys, trim_census_sdc, 'seda_district', 'School District Name', 0.3, 3, full = FALSE)[, -c(2:5)]
 
 ### Join County on County Name
 ### Append county to academic performance data and match by county name
