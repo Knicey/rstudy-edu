@@ -13,5 +13,5 @@ The repository is organized as follows:
 - `thesis.qmd` and `thesis.pdf` contain the final thesis submission for graduation with distinction.
 - `thesis-pub.qmd` and `thesis-pub.pdf` contain the changes made for publication.
 
-The shiny app can be found at: https://nathany.shinyapps.io/education-statistics/
+An early version of this project was published as a shiny app that can be found at: https://nathany.shinyapps.io/education-statistics/
 
